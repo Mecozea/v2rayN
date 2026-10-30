@@ -231,11 +231,7 @@ public class NowhereRuntimeTests
             try { await NowhereRuntime.WaitForSocksAsync(process, port, CancellationToken.None); }
             finally { await process.StopAsync(); }
             await process.HasExited.Should().BeTrue();
-            // Rebinding can fail on Windows while closed TCP connections remain in
-            // TIME_WAIT. Inspect listening sockets to detect an actual leaked listener.
-            var stillListening = IPGlobalProperties.GetIPGlobalProperties()
-                .GetActiveTcpListeners().Any(endpoint => endpoint.Port == port);
-            await stillListening.Should().BeFalse();
+            await AssertListenerReleasedAsync(port);
         }
     }
 
@@ -263,9 +259,7 @@ public class NowhereRuntimeTests
         await second.HasExited.Should().BeTrue();
         foreach (var port in new[] { firstPort, secondPort })
         {
-            var listener = new TcpListener(IPAddress.Loopback, port);
-            try { listener.Start(); }
-            finally { listener.Stop(); }
+            await AssertListenerReleasedAsync(port);
         }
     }
 
@@ -291,9 +285,7 @@ public class NowhereRuntimeTests
         }
         finally { await process.StopAsync(); }
         await process.HasExited.Should().BeTrue();
-        var listener = new TcpListener(IPAddress.Loopback, port);
-        try { listener.Start(); }
-        finally { listener.Stop(); }
+        await AssertListenerReleasedAsync(port);
     }
 
     [Test]
@@ -304,6 +296,22 @@ public class NowhereRuntimeTests
         var result = NodeValidator.Validate(Node(), core);
         await result.Success.Should().BeFalse();
         await result.Errors.Any().Should().BeTrue();
+    }
+
+    private static async Task AssertListenerReleasedAsync(int port)
+    {
+        // Windows can finish process exit before the TCP table reflects socket cleanup.
+        // TIME_WAIT also makes immediate exclusive rebinding unsuitable as a leak check.
+        var deadline = Stopwatch.StartNew();
+        while (IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners()
+            .Any(endpoint => endpoint.Port == port))
+        {
+            if (deadline.Elapsed >= TimeSpan.FromSeconds(5))
+            {
+                throw new InvalidOperationException("Nowhere listener remained after process exit.");
+            }
+            await Task.Delay(50);
+        }
     }
 
     private static ProfileItem Node() => new()
