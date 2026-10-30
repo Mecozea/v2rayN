@@ -13,7 +13,7 @@
 
 文档等不影响构建的修改不触发自动构建；标签推送不受路径过滤限制。普通分支 / PR 的新提交会取消相同分支 / PR 的旧运行；标签构建不取消。两个构建任务均设置 45 分钟上限，SDK 下载和 NuGet 依赖由 Actions 管理并缓存。
 
-构建版本来源依次为：推送的标签版本、手动填写版本、Directory.Build.props。Windows/macOS 使用同一个值发布 GUI 与更新器。当前源码默认版本为 7.25.8。
+构建版本来源依次为：推送的标签版本、手动填写版本、Directory.Build.props。Windows/macOS 使用同一个值发布 GUI 与更新器。当前源码默认版本为 7.25.6。
 
 ## 产物与数量
 
@@ -48,8 +48,8 @@
 公开预发布：确认修改已提交、目标 tag 尚未使用，然后执行：
 
 ```sh
-git tag nowhere-v7.25.8
-git push origin nowhere-v7.25.8
+git tag nowhere-v7.25.6
+git push origin nowhere-v7.25.6
 ```
 
 标签应指向需要发布的提交。发布目标使用 `github.repository`，即本 fork `Mecozea/v2rayN`。未调用上游发布或 WinGet；客户端 GUI 更新源同样指向本 fork。流水线创建 prerelease，客户端需勾选“检查 Pre-Release”才能发现预发布；完成平台验收后再在 GitHub 将其转为稳定版。
@@ -70,13 +70,13 @@ shasum -a 256 -c SHA256SUMS-macos-arm64.txt
 Windows x64 需 .NET 10 SDK：
 
 ```powershell
-./scripts/Publish-NowhereWindows.ps1 -OutputDirectory ./dist/windows-x64 -Version 7.25.8
+./scripts/Publish-NowhereWindows.ps1 -OutputDirectory ./dist/windows-x64 -Version 7.25.6
 ```
 
 Apple Silicon Mac 需 .NET 10 SDK、Python 3.13+、Xcode Command Line Tools：
 
 ```sh
-bash scripts/package-nowhere-macos.sh 7.25.8
+bash scripts/package-nowhere-macos.sh 7.25.6
 ```
 
 输出目录应为空 / 不存在。可用 `NOWHERE_MACOS_CACHE=/absolute/cache` 复用缓存，仍逐项核对固定 SHA-256。macOS 程序与原生库放在 Contents/MacOS，内核 / 规则 / 标记放在 Contents/Resources；完整 App ZIP 用于更新器整体替换。官方 Nowhere 可执行文件保持原始字节与签名。
