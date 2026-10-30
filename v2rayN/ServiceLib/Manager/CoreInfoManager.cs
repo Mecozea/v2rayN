@@ -42,6 +42,16 @@ public sealed class CoreInfoManager
                 break;
             }
         }
+        if (OperatingSystem.IsMacOS() && coreInfo?.CoreType == ECoreType.sing_box)
+        {
+            var bundled = Path.Combine(Utils.GetBundledResourcePath("bin"), "sing_box", "sing-box");
+            // App upgrades intentionally preserve user cores. A stale one must not
+            // shadow the compatible frontend included in a complete Mac bundle.
+            if (File.Exists(bundled))
+            {
+                return BundledSingbox.Resolve(fileName, bundled);
+            }
+        }
         if (fileName.IsNullOrEmpty())
         {
             msg = string.Format(ResUI.NotFoundCore, Utils.GetBinPath("", coreInfo?.CoreType.ToString()), coreInfo?.CoreExes?.LastOrDefault(), coreInfo?.Url);
@@ -69,6 +79,7 @@ public sealed class CoreInfoManager
             }
         }
 
+        if (NowhereInstaller.IsSupported) { lst.Add(ECoreType.Nowhere); }
         return lst;
     }
 
@@ -77,6 +88,7 @@ public sealed class CoreInfoManager
         return type switch
         {
             ECoreType.v2rayN => !Utils.IsPackagedInstall(),
+            ECoreType.Nowhere => NowhereInstaller.IsSupported,
             ECoreType.Xray => true,
             ECoreType.mihomo => true,
             ECoreType.sing_box => true,
@@ -103,6 +115,14 @@ public sealed class CoreInfoManager
 
         _coreInfo =
         [
+            new CoreInfo
+            {
+                CoreType = ECoreType.Nowhere,
+                CoreExes = ["nowhere"],
+                Url = GetCoreUrl(ECoreType.Nowhere),
+                VersionArg = "--version",
+                Match = "nowhere",
+            },
             new CoreInfo
                 {
                     CoreType = ECoreType.v2rayN,

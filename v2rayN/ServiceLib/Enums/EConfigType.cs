@@ -16,6 +16,7 @@ public enum EConfigType
     Naive = 12,
     Outbound = 13,
     MASQUE = 14,
+    Nowhere = 15,
     PolicyGroup = 101,
     ProxyChain = 102,
 }

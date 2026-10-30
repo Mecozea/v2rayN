@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1897,4 +1897,19 @@
   <data name="menuAddMasqueServer" xml:space="preserve">
     <value>添加 [MASQUE]</value>
   </data>
+  <data name="NowhereKey" xml:space="preserve"><value>共享密钥（32 位小写十六进制）</value></data>
+  <data name="NowhereCarrier" xml:space="preserve"><value>承载（tcp / udp）</value></data>
+  <data name="NowhereMorph" xml:space="preserve"><value>启用 Morph</value></data>
+  <data name="NowherePin" xml:space="preserve"><value>证书 SHA-256 指纹（可选）</value></data>
+  <data name="NowhereInvalidSettings" xml:space="preserve"><value>Nowhere 参数无效，请检查地址、端口、密钥、承载、SNI 和证书指纹。</value></data>
+  <data name="NowhereExperimental" xml:space="preserve"><value>实验性适配，网络与平台验收尚未完成。</value></data>
+  <data name="NowhereSubscriptionReconnect" xml:space="preserve"><value>当前订阅节点的参数已变化或节点已删除，需要重新连接；将停止旧会话。</value></data>
+  <data name="menuAddNowhereServer" xml:space="preserve"><value>添加 Nowhere 节点（实验性）</value></data>
+  <data name="NowhereUnsupportedPlatform" xml:space="preserve"><value>Nowhere 支持 Windows x64 和 macOS Apple Silicon（arm64）。</value></data>
+  <data name="menuUpdateNowhereCore" xml:space="preserve"><value>安装 / 修复 Nowhere 内核（将重新连接）</value></data>
+  <data name="menuRollbackNowhereCore" xml:space="preserve"><value>回退 Nowhere 内核（将重新连接）</value></data>
+  <data name="NowhereExportShareInstead" xml:space="preserve"><value>Nowhere 由客户端管理 Vector 实例，请导出分享链接或二维码，而不是独立内核配置。</value></data>
+  <data name="CorePreviousSessionRemains" xml:space="preserve"><value>新的连接参数未生效，旧会话仍在运行。请修复错误并重新连接，以应用已保存的参数。</value></data>
+  <data name="NowhereCoreCurrent" xml:space="preserve"><value>Nowhere {0} 已安装并通过验证。</value></data>
+  <data name="NowhereCoreAvailable" xml:space="preserve"><value>Nowhere {0} 可安装 / 更新。</value></data>
 </root>

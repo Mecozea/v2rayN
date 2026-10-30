@@ -31,7 +31,11 @@ public class SemanticVersion : IEquatable<SemanticVersion>, IComparable
             }
             raw = version;
 
-            var span = version.StartsWith("v", StringComparison.OrdinalIgnoreCase)
+            // This fork's release workflow uses nowhere-vX.Y.Z tags. Retain the raw
+            // tag for asset URLs while comparing its numeric version normally.
+            var span = version.StartsWith("nowhere-v", StringComparison.OrdinalIgnoreCase)
+                ? version.AsSpan("nowhere-v".Length)
+                : version.StartsWith("v", StringComparison.OrdinalIgnoreCase)
                 ? version.AsSpan(1)
                 : version.AsSpan();
             var plusIdx = span.IndexOf('+');
@@ -90,6 +94,13 @@ public class SemanticVersion : IEquatable<SemanticVersion>, IComparable
         try
         {
             result = new SemanticVersion(version);
+            // The forgiving constructor falls back to 0.0.0 on invalid input.
+            // TryParse must distinguish that fallback from a real release tag.
+            if (string.IsNullOrWhiteSpace(version) || result.raw != version)
+            {
+                result = null;
+                return false;
+            }
             return true;
         }
         catch

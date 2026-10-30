@@ -38,7 +38,7 @@ public class NativeWebUpdateHelperTests
                     throw new UnauthorizedAccessException("Access is denied.");
                 },
                 "replacing the installed Web executable 'C:/install/v2rayN.WebAPI.exe'",
-                retryWindow: TimeSpan.FromMilliseconds(120),
+                retryWindow: TimeSpan.FromSeconds(2),
                 retryDelay: TimeSpan.FromMilliseconds(10));
         }
         catch (IOException exception)

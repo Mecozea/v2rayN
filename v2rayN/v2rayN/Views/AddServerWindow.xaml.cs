@@ -1,4 +1,4 @@
-using System.Windows.Controls;
+﻿using System.Windows.Controls;
 
 namespace v2rayN.Views;
 
@@ -14,9 +14,17 @@ public partial class AddServerWindow
         cmbStreamSecurity.SelectionChanged += CmbStreamSecurity_SelectionChanged;
         btnGUID.Click += btnGUID_Click;
         btnGUID5.Click += btnGUID_Click;
+        txtNowhereKey.PasswordChanged += (_, _) =>
+        {
+            if (ViewModel?.SelectedSource.ConfigType == EConfigType.Nowhere)
+            {
+                ViewModel.SelectedSource.Password = txtNowhereKey.Password;
+            }
+        };
 
         cmbCoreType.ItemsSource = Global.CoreTypes.AppendEmpty();
         cmbNetwork.ItemsSource = Global.Networks;
+        cmbNowhereCarrier.ItemsSource = new[] { "tcp", "udp" };
 
         cmbHeaderTypeRaw.ItemsSource = new List<string> { Global.None, Global.RawHeaderHttp };
 
@@ -125,6 +133,13 @@ public partial class AddServerWindow
                             this.Bind(ViewModel, vm => vm.WgInterfaceAddress, v => v.txtRequestHost9.Text).DisposeWith(currentTypeDisposables);
                             this.Bind(ViewModel, vm => vm.WgMtu, v => v.txtShortId9.Text).DisposeWith(currentTypeDisposables);
                             this.Bind(ViewModel, vm => vm.WgDns, v => v.txtDns.Text).DisposeWith(currentTypeDisposables);
+                            break;
+
+                        case EConfigType.Nowhere:
+                            this.Bind(ViewModel, vm => vm.NowhereCarrier, v => v.cmbNowhereCarrier.SelectedItem).DisposeWith(currentTypeDisposables);
+                            this.Bind(ViewModel, vm => vm.NowhereMorph, v => v.togNowhereMorph.IsChecked).DisposeWith(currentTypeDisposables);
+                            this.Bind(ViewModel, vm => vm.SelectedSource.Sni, v => v.txtNowhereSni.Text).DisposeWith(currentTypeDisposables);
+                            this.Bind(ViewModel, vm => vm.NowherePin, v => v.txtNowherePin.Text).DisposeWith(currentTypeDisposables);
                             break;
 
                         case EConfigType.Anytls:
@@ -268,6 +283,17 @@ public partial class AddServerWindow
                 gridTransport.Visibility = Visibility.Collapsed;
                 gridTls.Visibility = Visibility.Collapsed;
 
+                break;
+
+            case EConfigType.Nowhere:
+                cmbCoreType.ItemsSource = new[] { nameof(ECoreType.Nowhere) };
+                txtNowhereKey.Password = profileItem.Password;
+                gridNowhere.Visibility = Visibility.Visible;
+                sepa2.Visibility = Visibility.Collapsed;
+                gridTransport.Visibility = Visibility.Collapsed;
+                gridTls.Visibility = Visibility.Collapsed;
+                gridFinalmask.Visibility = Visibility.Collapsed;
+                cmbCoreType.IsEnabled = false;
                 break;
 
             case EConfigType.Anytls:

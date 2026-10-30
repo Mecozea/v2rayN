@@ -1,4 +1,4 @@
-namespace ServiceLib.Handler;
+﻿namespace ServiceLib.Handler;
 
 public static class SubscriptionHandler
 {
@@ -204,11 +204,8 @@ public static class SubscriptionHandler
 
         await updateFunc?.Invoke(false, $"{hashCode}{ResUI.MsgGetSubscriptionSuccessfully}");
 
-        // If result is too short, display content directly
-        if (result.Length < 99)
-        {
-            await updateFunc?.Invoke(false, $"{hashCode}{result}");
-        }
+        // Subscription content can contain shared keys, including short malformed links.
+        // Never echo raw subscription bodies into the UI or logs.
 
         await updateFunc?.Invoke(false, $"{hashCode}{ResUI.MsgStartParsingSubscription}");
 
@@ -217,7 +214,6 @@ public static class SubscriptionHandler
         if (ret <= 0)
         {
             Logging.SaveLog("FailedImportSubscription");
-            Logging.SaveLog(result);
         }
 
         // Update completion message

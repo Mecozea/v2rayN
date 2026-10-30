@@ -1,3 +1,6 @@
+using CliWrap;
+using CliWrap.Buffered;
+
 namespace ServiceLib.Handler.SysProxy;
 
 [SupportedOSPlatform("macos")]
@@ -22,16 +25,26 @@ public static class ProxySettingOSX
         await ExecCmd(args);
     }
 
+    public static async Task ClearOwnedProxy(string host, int port)
+    {
+        // A custom script has no ownership-query contract: never blindly clear another app's proxy.
+        if (AppManager.Instance.Config.SystemProxyItem?.CustomSystemProxyScriptPath.IsNotEmpty() == true)
+        {
+            return;
+        }
+        await ExecCmd(["clear-owned", host, port.ToString()]);
+    }
+
     private static async Task ExecCmd(List<string> args)
     {
         var customSystemProxyScriptPath = AppManager.Instance.Config.SystemProxyItem?.CustomSystemProxyScriptPath;
         var fileName = (customSystemProxyScriptPath.IsNotEmpty() && File.Exists(customSystemProxyScriptPath))
             ? customSystemProxyScriptPath
-            : await FileUtils.CreateLinuxShellFile(_proxySetFileName, EmbedUtils.GetEmbedText(Global.ProxySetOSXShellFileName), false);
+            : await FileUtils.CreateLinuxShellFile(_proxySetFileName, EmbedUtils.GetEmbedText(Global.ProxySetOSXShellFileName), true);
 
         // TODO: temporarily notify which script is being used
         NoticeManager.Instance.SendMessage(fileName);
 
-        await Utils.GetCliWrapOutput(fileName, args);
+        await Cli.Wrap(fileName).WithArguments(args).ExecuteBufferedAsync();
     }
 }

@@ -1,4 +1,4 @@
-<Window
+﻿<Window
     x:Class="v2rayN.Desktop.Views.AddServerWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -680,6 +680,21 @@
                         Margin="{StaticResource Margin4}"
                         HorizontalAlignment="Left"
                         PlaceholderText="1.1.1.1, 2606:4700:4700::1111" />
+                </Grid>
+                <Grid x:Name="gridNowhere" Grid.Row="2" IsVisible="False">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="300" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Margin="{StaticResource Margin4}" VerticalAlignment="Center" Text="{x:Static resx:ResUI.NowhereKey}" />
+                    <TextBox x:Name="txtNowhereKey" Grid.Row="0" Grid.Column="1" Margin="{StaticResource Margin4}" PasswordChar="●" MaxLength="32" />
+                    <TextBlock Grid.Row="1" Margin="{StaticResource Margin4}" VerticalAlignment="Center" Text="{x:Static resx:ResUI.NowhereCarrier}" />
+                    <ComboBox x:Name="cmbNowhereCarrier" Grid.Row="1" Grid.Column="1" Margin="{StaticResource Margin4}" />
+                    <TextBlock Grid.Row="2" Margin="{StaticResource Margin4}" VerticalAlignment="Center" Text="{x:Static resx:ResUI.NowhereMorph}" />
+                    <CheckBox x:Name="togNowhereMorph" Grid.Row="2" Grid.Column="1" Margin="{StaticResource Margin4}" />
+                    <TextBlock Grid.Row="3" Margin="{StaticResource Margin4}" VerticalAlignment="Center" Text="{x:Static resx:ResUI.TbSNI}" />
+                    <TextBox x:Name="txtNowhereSni" Grid.Row="3" Grid.Column="1" Margin="{StaticResource Margin4}" />
+                    <TextBlock Grid.Row="4" Margin="{StaticResource Margin4}" VerticalAlignment="Center" Text="{x:Static resx:ResUI.NowherePin}" />
+                    <TextBox x:Name="txtNowherePin" Grid.Row="4" Grid.Column="1" Margin="{StaticResource Margin4}" />
+                    <TextBlock Grid.Row="6" Grid.ColumnSpan="2" Margin="{StaticResource Margin4}" TextWrapping="Wrap" Text="{x:Static resx:ResUI.NowhereExperimental}" />
                 </Grid>
                 <Grid
                     x:Name="gridAnytls"

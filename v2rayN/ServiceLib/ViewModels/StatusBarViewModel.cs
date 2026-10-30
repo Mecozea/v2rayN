@@ -1,4 +1,4 @@
-namespace ServiceLib.ViewModels;
+﻿namespace ServiceLib.ViewModels;
 
 public partial class StatusBarViewModel : MyReactiveObject
 {
@@ -376,7 +376,15 @@ public partial class StatusBarViewModel : MyReactiveObject
 
     public async Task ChangeSystemProxyAsync(ESysProxyType type, bool blChange)
     {
-        await SysProxyHandler.UpdateSysProxy(_config, false);
+        if (type is ESysProxyType.ForcedChange or ESysProxyType.Pac)
+        {
+            // Persist the requested mode before startup, but only point the OS at a live managed listener.
+            await CoreManager.Instance.ApplySystemProxyAsync(CoreManager.Instance.StopGeneration);
+        }
+        else
+        {
+            await SysProxyHandler.UpdateSysProxy(_config, false);
+        }
 
         BlSystemProxyClear = type == ESysProxyType.ForcedClear;
         BlSystemProxySet = type == ESysProxyType.ForcedChange;

@@ -1,4 +1,4 @@
-namespace ServiceLib.ViewModels;
+﻿namespace ServiceLib.ViewModels;
 
 public partial class MainWindowViewModel : MyReactiveObject
 {
@@ -33,6 +33,7 @@ public partial class MainWindowViewModel : MyReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> AddAnytlsServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> AddNaiveServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> AddMasqueServerCmd { get; }
+    public ReactiveCommand<RxVoid, RxVoid> AddNowhereServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> AddCustomServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> AddCustomOutboundServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> AddPolicyGroupServerCmd { get; }
@@ -144,6 +145,10 @@ public partial class MainWindowViewModel : MyReactiveObject
         AddMasqueServerCmd = ReactiveCommand.CreateFromTask(async () =>
         {
             await AddServerAsync(EConfigType.MASQUE);
+        });
+        AddNowhereServerCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await AddServerAsync(EConfigType.Nowhere);
         });
         AddCustomServerCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -366,11 +371,16 @@ public partial class MainWindowViewModel : MyReactiveObject
         NoticeManager.Instance.SendMessageEx(msg);
         if (success)
         {
+            var reconnectRequired = ConfigHandler.ConsumeSubscriptionReconnectRequired(_config);
+            if (reconnectRequired)
+            {
+                await CoreManager.Instance.CoreStop();
+            }
             var indexIdOld = _config.IndexId;
             await RefreshServersDispatcherAsync();
 
             // If indexId changed or subIndexId is empty, directly reload.
-            if (indexIdOld != _config.IndexId || _config.SubIndexId.IsNullOrEmpty())
+            if (reconnectRequired || indexIdOld != _config.IndexId || _config.SubIndexId.IsNullOrEmpty())
             {
                 await Reload();
             }
@@ -453,6 +463,11 @@ public partial class MainWindowViewModel : MyReactiveObject
 
     public async Task AddServerAsync(EConfigType eConfigType)
     {
+        if (eConfigType == EConfigType.Nowhere && !NowhereInstaller.IsSupported)
+        {
+            NoticeManager.Instance.Enqueue(ResUI.NowhereUnsupportedPlatform);
+            return;
+        }
         ProfileItem item = new()
         {
             Subid = _config.SubIndexId,
@@ -664,14 +679,17 @@ public partial class MainWindowViewModel : MyReactiveObject
     #region core job
 
     private bool _hasNextReloadJob = false;
+    private long _nextReloadStopGeneration;
     private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
 
     public async Task Reload()
     {
+        var stopGeneration = CoreManager.Instance.StopGeneration;
         //If there are unfinished reload job, marked with next job.
         if (!await _reloadSemaphore.WaitAsync(0))
         {
             _hasNextReloadJob = true;
+            _nextReloadStopGeneration = stopGeneration;
             return;
         }
 
@@ -704,16 +722,41 @@ public partial class MainWindowViewModel : MyReactiveObject
                 return;
             }
 
-            await Task.Run(async () =>
+            var started = await Task.Run(async () =>
             {
-                await LoadCore(allResult.MainResult.Context, allResult.PreSocksResult?.Context);
-                await SysProxyHandler.UpdateSysProxy(_config, false);
+                if (CoreManager.Instance.StopGeneration != stopGeneration)
+                {
+                    return false;
+                }
+                if (!await LoadCore(allResult.MainResult.Context, allResult.PreSocksResult?.Context, stopGeneration))
+                {
+                    return false;
+                }
+                if (!await CoreManager.Instance.ApplySystemProxyAsync(stopGeneration))
+                {
+                    return false;
+                }
                 await Task.Delay(1000);
+                return CoreManager.Instance.StopGeneration == stopGeneration;
             });
+            if (!started)
+            {
+                if (CoreManager.Instance.IsRunning && CoreManager.Instance.StopGeneration == stopGeneration)
+                {
+                    NoticeManager.Instance.Enqueue(ResUI.CorePreviousSessionRemains);
+                }
+                ReloadResult(false);
+                return;
+            }
             RxSchedulers.MainThreadScheduler.Schedule(async () =>
             {
+                if (CoreManager.Instance.StopGeneration != stopGeneration || _config.IndexId != profileItem.IndexId)
+                {
+                    return;
+                }
                 var result = await StatusBarViewModel.TestServerAvailability();
-                if (result == null || profileItem.IndexId.IsNullOrEmpty())
+                if (result == null || profileItem.IndexId.IsNullOrEmpty()
+                    || CoreManager.Instance.StopGeneration != stopGeneration || _config.IndexId != profileItem.IndexId)
                 {
                     return;
                 }
@@ -751,7 +794,10 @@ public partial class MainWindowViewModel : MyReactiveObject
             if (_hasNextReloadJob)
             {
                 _hasNextReloadJob = false;
-                await Reload();
+                if (CoreManager.Instance.StopGeneration == _nextReloadStopGeneration)
+                {
+                    await Reload();
+                }
             }
         }
     }
@@ -773,10 +819,8 @@ public partial class MainWindowViewModel : MyReactiveObject
         RxSchedulers.MainThreadScheduler.Schedule(() => BlReloadEnabled = enabled);
     }
 
-    private async Task LoadCore(CoreConfigContext? mainContext, CoreConfigContext? preContext)
-    {
-        await CoreManager.Instance.LoadCore(mainContext, preContext);
-    }
+    private Task<bool> LoadCore(CoreConfigContext? mainContext, CoreConfigContext? preContext, long stopGeneration)
+        => CoreManager.Instance.LoadCore(mainContext, preContext, stopGeneration);
 
     #endregion core job
 

@@ -50,6 +50,17 @@ public class SpeedtestServiceBatchTests
         new() { CoreType = ECoreType.sing_box }
     ];
 
+    [Test]
+    public async Task NowhereTcpProbes_ShouldNotBeSilentlyDroppedOrMixedWithNativeCores()
+    {
+        var profiles = CreateProfiles();
+        var vector = new ServerTestItem { CoreType = ECoreType.Nowhere, ConfigType = EConfigType.Nowhere };
+        profiles.Add(vector);
+        var batches = GetBatches(profiles, 2);
+        await batches.SelectMany(batch => batch).Count().Should().BeEqualTo(profiles.Count);
+        await batches.Single(batch => batch.Contains(vector)).Count.Should().BeEqualTo(1);
+    }
+
     private static List<List<ServerTestItem>> GetBatches(List<ServerTestItem> profiles, int pageSize)
     {
         var service = new SpeedtestService(new Config { SpeedTestItem = new() }, _ => Task.CompletedTask);

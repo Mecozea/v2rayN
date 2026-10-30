@@ -1,4 +1,4 @@
-namespace ServiceLib.Handler.Builder;
+﻿namespace ServiceLib.Handler.Builder;
 
 public record NodeValidatorResult(List<string> Errors, List<string> Warnings)
 {
@@ -31,6 +31,14 @@ public class NodeValidator
 
     private static void ValidateNodeAndCoreSupport(ProfileItem item, ECoreType coreType, ValidationContext v)
     {
+        if (item.ConfigType == EConfigType.Nowhere)
+        {
+            v.Assert(coreType == ECoreType.Nowhere,
+                string.Format(ResUI.MsgCoreNotSupportProtocol, coreType.ToString(), item.ConfigType));
+            v.Assert(NowhereFmt.IsValid(item), ResUI.ConfigurationFormatIncorrect);
+            return;
+        }
+
         if (item.ConfigType is EConfigType.Custom)
         {
             return;

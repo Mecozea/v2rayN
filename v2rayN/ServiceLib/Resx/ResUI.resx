@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1905,4 +1905,19 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="menuAddMasqueServer" xml:space="preserve">
     <value>Add [MASQUE]</value>
   </data>
+  <data name="NowhereKey" xml:space="preserve"><value>Shared key (32 lowercase hexadecimal characters)</value></data>
+  <data name="NowhereCarrier" xml:space="preserve"><value>Carrier (tcp / udp)</value></data>
+  <data name="NowhereMorph" xml:space="preserve"><value>Enable Morph</value></data>
+  <data name="NowherePin" xml:space="preserve"><value>Certificate SHA-256 pin (optional)</value></data>
+  <data name="NowhereInvalidSettings" xml:space="preserve"><value>Invalid Nowhere settings. Check the address, port, key, carrier, SNI and certificate pin.</value></data>
+  <data name="NowhereExperimental" xml:space="preserve"><value>Experimental integration. Network and platform acceptance tests are not complete.</value></data>
+  <data name="NowhereSubscriptionReconnect" xml:space="preserve"><value>The active subscription node changed or was removed. Reconnecting is required; the previous session will be stopped.</value></data>
+  <data name="menuAddNowhereServer" xml:space="preserve"><value>Add Nowhere server (experimental)</value></data>
+  <data name="NowhereUnsupportedPlatform" xml:space="preserve"><value>Nowhere supports Windows x64 and macOS Apple Silicon (arm64).</value></data>
+  <data name="menuUpdateNowhereCore" xml:space="preserve"><value>Install / repair Nowhere core (reconnects)</value></data>
+  <data name="menuRollbackNowhereCore" xml:space="preserve"><value>Roll back Nowhere core (reconnects)</value></data>
+  <data name="NowhereExportShareInstead" xml:space="preserve"><value>Nowhere uses a managed Vector instance. Export its share URL or QR code instead of a standalone core configuration.</value></data>
+  <data name="CorePreviousSessionRemains" xml:space="preserve"><value>The new connection settings were not applied. The previous session is still running; fix the error and reconnect to apply the saved settings.</value></data>
+  <data name="NowhereCoreCurrent" xml:space="preserve"><value>Nowhere {0} is installed and verified.</value></data>
+  <data name="NowhereCoreAvailable" xml:space="preserve"><value>Nowhere {0} is available to install or update.</value></data>
 </root>

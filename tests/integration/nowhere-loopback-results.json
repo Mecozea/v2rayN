@@ -1,0 +1,56 @@
+{
+  "tested_at": "2026-10-30T16:50:26.614180+08:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "nowhere_version": "nowhere-v3.2.0 windows/x86_64",
+  "nowhere_sha256": "36b90a7eabbe530d508ec0c941f60c22d8decf7177f0b08261c13c81cdc0490c",
+  "frontend_version": null,
+  "scope": "local loopback only; no system proxy or TUN changes",
+  "results": [
+    {
+      "carrier": "tcp",
+      "morph": 0,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "none",
+      "rejected": []
+    },
+    {
+      "carrier": "tcp",
+      "morph": 1,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "none",
+      "rejected": [
+        "wrong-pin",
+        "wrong-key",
+        "wrong-morph",
+        "untrusted-self-signed"
+      ]
+    },
+    {
+      "carrier": "udp",
+      "morph": 0,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "none",
+      "rejected": []
+    },
+    {
+      "carrier": "udp",
+      "morph": 1,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "none",
+      "rejected": [
+        "wrong-pin",
+        "wrong-key",
+        "wrong-morph",
+        "untrusted-self-signed"
+      ]
+    }
+  ]
+}

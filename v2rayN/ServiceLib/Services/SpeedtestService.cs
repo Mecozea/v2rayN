@@ -1,4 +1,4 @@
-using ServiceLib.UdpTest;
+﻿using ServiceLib.UdpTest;
 
 namespace ServiceLib.Services;
 
@@ -99,11 +99,13 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     break;
 
                 case ESpeedActionType.Realping:
-                    await RunRealPingBatchAsync(lstSelected, completedIds, 0, ct);
+                    await RunNowhereTestsAsync(lstSelected, completedIds, false, ct);
+                    await RunRealPingBatchAsync(lstSelected.Where(it => it.ConfigType != EConfigType.Nowhere).ToList(), completedIds, 0, ct);
                     break;
 
                 case ESpeedActionType.UdpTest:
-                    await RunUdpTestBatchAsync(lstSelected, completedIds, 0, ct);
+                    await RunNowhereTestsAsync(lstSelected, completedIds, true, ct);
+                    await RunUdpTestBatchAsync(lstSelected.Where(it => it.ConfigType != EConfigType.Nowhere).ToList(), completedIds, 0, ct);
                     break;
 
                 case ESpeedActionType.Speedtest:
@@ -283,7 +285,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         ProcessService processService = null;
         try
         {
-            processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds);
+            processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds, ct);
             if (processService is null)
             {
                 return false;
@@ -331,7 +333,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             if (processService != null)
             {
-                await processService?.StopAsync();
+                await processService.StopAsync();
+                processService.Dispose();
             }
         }
         return true;
@@ -374,7 +377,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         ProcessService processService = null;
         try
         {
-            processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds);
+            processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds, ct);
             if (processService is null)
             {
                 return false;
@@ -422,10 +425,59 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             if (processService != null)
             {
-                await processService?.StopAsync();
+                await processService.StopAsync();
+                processService.Dispose();
             }
         }
         return true;
+    }
+
+    private async Task RunNowhereTestsAsync(List<ServerTestItem> selecteds,
+        ConcurrentDictionary<string, byte> completedIds, bool udp, CancellationToken ct)
+    {
+        var options = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Math.Max(1, Math.Min(_speedTestPageSize, _config.SpeedTestItem.MixedConcurrencyCount)),
+            CancellationToken = ct,
+        };
+        await Parallel.ForEachAsync(selecteds.Where(it => it.ConfigType == EConfigType.Nowhere), options, async (item, token) =>
+        {
+            ProcessService? process = null;
+            try
+            {
+                process = await CoreManager.Instance.LoadCoreConfigSpeedtest(item, token);
+                if (process == null)
+                {
+                    await UpdateFunc(item.IndexId, ResUI.FailedToRunCore);
+                    return;
+                }
+                if (udp)
+                {
+                    await DoUdpTest(item, completedIds, token);
+                }
+                else
+                {
+                    await DoRealPing(item, completedIds, token);
+                }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // Never echo exceptions containing launch URLs or shared keys.
+                await UpdateFunc(item.IndexId, ResUI.FailedToRunCore);
+            }
+            finally
+            {
+                if (process != null)
+                {
+                    await process.StopAsync();
+                    process.Dispose();
+                }
+            }
+        });
     }
 
     private async Task RunMixedTestAsync(List<ServerTestItem> selecteds,
@@ -447,7 +499,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             ProcessService processService = null;
             try
             {
-                processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(it);
+                processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(it, innerCt);
                 if (processService is null)
                 {
                     await UpdateFunc(it.IndexId, "", ResUI.FailedToRunCore);
@@ -482,6 +534,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 if (processService != null)
                 {
                     await processService.StopAsync();
+                    processService.Dispose();
                 }
             }
         });
@@ -603,6 +656,11 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         for (var num = 0; num < (int)Math.Ceiling(lst2.Count * 1.0 / pageSize); num++)
         {
             lstTest.Add(lst2.Skip(num * pageSize).Take(pageSize).ToList());
+        }
+        var vectors = lstSelected.Where(t => t.CoreType == ECoreType.Nowhere).ToList();
+        for (var offset = 0; offset < vectors.Count; offset += pageSize)
+        {
+            lstTest.Add(vectors.Skip(offset).Take(pageSize).ToList());
         }
 
         return lstTest;

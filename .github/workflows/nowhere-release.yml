@@ -1,0 +1,200 @@
+name: Nowhere build and release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional X.Y.Z override; empty uses Directory.Build.props. Artifacts only.'
+        type: string
+        required: false
+        default: ''
+  push:
+    branches: [master]
+    tags: ['nowhere-v*']
+    paths:
+      - '.github/workflows/nowhere-release.yml'
+      - 'v2rayN/**'
+      - 'scripts/**'
+      - 'tests/integration/**'
+      - 'global.json'
+      - 'LICENSE'
+      - 'docs/licenses/**'
+  pull_request:
+    branches: [master]
+    paths:
+      - '.github/workflows/nowhere-release.yml'
+      - 'v2rayN/**'
+      - 'scripts/**'
+      - 'tests/integration/**'
+      - 'global.json'
+      - 'LICENSE'
+      - 'docs/licenses/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nowhere-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            platform: windows-x64
+          - runner: macos-15
+            platform: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: v2rayN/Directory.Packages.props
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Validate version
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/tags/nowhere-v* ]]; then
+            version="${GITHUB_REF_NAME#nowhere-v}"
+          elif [[ -n "$INPUT_VERSION" ]]; then
+            version="$INPUT_VERSION"
+          else
+            version="$(python3 -c 'import xml.etree.ElementTree as E; print(E.parse("v2rayN/Directory.Build.props").findtext(".//Version"))')"
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use nowhere-vX.Y.Z tags'; exit 1; }
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Build Windows complete package
+        if: matrix.platform == 'windows-x64'
+        shell: pwsh
+        env:
+          BUNDLE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          ./scripts/Publish-NowhereWindows.ps1 -OutputDirectory "$PWD/dist/windows-x64" -Version $env:BUNDLE_VERSION
+          Compress-Archive -Path dist/windows-x64 -DestinationPath dist/v2rayN-windows-64.zip
+          $hash = (Get-FileHash dist/v2rayN-windows-64.zip).Hash.ToLowerInvariant()
+          "$hash  v2rayN-windows-64.zip" | Set-Content dist/SHA256SUMS-windows-x64.txt
+      - name: Build Apple Silicon app, ZIP and DMG
+        if: matrix.platform == 'macos-arm64'
+        shell: bash
+        env:
+          BUNDLE_VERSION: ${{ steps.version.outputs.value }}
+        run: bash scripts/package-nowhere-macos.sh "$BUNDLE_VERSION"
+      - name: Test Windows runtime and updater
+        if: matrix.platform == 'windows-x64'
+        shell: pwsh
+        run: |
+          $env:NOWHERE_TEST_EXE = "$PWD/dist/windows-x64/bin/nowhere/nowhere.exe"
+          $env:XRAY_TEST_EXE = "$PWD/dist/windows-x64/bin/xray/xray.exe"
+          $env:SINGBOX_TEST_EXE = "$PWD/dist/windows-x64/bin/sing_box/sing-box.exe"
+          dotnet test --project v2rayN/ServiceLib.Tests -c Release --results-directory dist/test-results -- --report-trx
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test native macOS runtime and loopback bridge
+        if: matrix.platform == 'macos-arm64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mac="$PWD/dist/macos-arm64/v2rayN.app/Contents/Resources"
+          export NOWHERE_TEST_EXE="$mac/bin/nowhere/nowhere"
+          export XRAY_TEST_EXE="$mac/bin/xray/xray"
+          export SINGBOX_TEST_EXE="$mac/bin/sing_box/sing-box"
+          dotnet test --project v2rayN/ServiceLib.Tests -c Release --results-directory dist/test-results -- --report-trx
+          python3 tests/integration/test_macos_proxy.py
+          python3 tests/integration/nowhere_loopback.py --exe "$NOWHERE_TEST_EXE" --xray "$XRAY_TEST_EXE" --failures --output dist/macos-loopback.json
+      - name: Test shared WebAPI regression
+        shell: bash
+        run: dotnet test --project v2rayN/v2rayN.WebAPI/Tests -c Release --results-directory dist/test-results -- --report-trx
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostics-${{ matrix.platform }}
+          path: |
+            dist/macos-loopback.json
+            dist/test-results/**/*.trx
+          if-no-files-found: warn
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nowhere-${{ matrix.platform }}
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/SHA256SUMS-*.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/nowhere-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: nowhere-*
+          merge-multiple: true
+          path: dist
+      - name: Validate complete release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=(v2rayN-windows-64.zip v2rayN-macos-arm64.zip v2rayN-macos-arm64.dmg SHA256SUMS-windows-x64.txt SHA256SUMS-macos-arm64.txt)
+          for file in "${expected[@]}"; do
+            [[ -s "dist/$file" ]] || { echo "Missing release asset: $file"; exit 1; }
+          done
+          (cd dist && sha256sum --check SHA256SUMS-windows-x64.txt && sha256sum --check SHA256SUMS-macos-arm64.txt)
+      - name: Sign with this fork's release key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GNUPGHOME: ${{ runner.temp }}/nowhere-release-gnupg
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$GPG_PRIVATE_KEY" ]] || { echo 'Configure your own GPG_PRIVATE_KEY before publishing tags. Manual builds need no secret.'; exit 1; }
+          install -m 700 -d "$GNUPGHOME"
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          fingerprint="$(gpg --batch --list-secret-keys --with-colons | awk -F: '$1 == "fpr" { print $10; exit }')"
+          [[ -n "$fingerprint" ]]
+          gpg --batch --armor --export "$fingerprint" > dist/v2rayN-public-key.asc
+          for file in dist/*.zip dist/*.dmg dist/SHA256SUMS-*.txt; do
+            printf '%s' "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --local-user "$fingerprint" --armor --detach-sign "$file"
+          done
+      - name: Create prerelease with download assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --prerelease --title "v2rayN Nowhere $GITHUB_REF_NAME" --notes 'Nowhere-enabled fork. macOS Apple Silicon DMG is ad-hoc signed, not Apple notarized. See README and docs/nowhere-release.md for installation and verification.'
+          fi
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+
+      - name: Clean temporary signing keys
+        if: always()
+        shell: bash
+        run: |
+          keyring="$RUNNER_TEMP/nowhere-release-gnupg"
+          if [[ -d "$keyring" ]]; then
+            gpgconf --homedir "$keyring" --kill gpg-agent || true
+            rm -rf -- "$keyring"
+          fi

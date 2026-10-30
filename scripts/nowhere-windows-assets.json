@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "cores": [
+    {
+      "name": "nowhere",
+      "version": "3.2.0",
+      "url": "https://github.com/NodePassProject/Nowhere/releases/download/v3.2.0/nowhere-x86_64-pc-windows-msvc.zip",
+      "sha256": "bdc01f2df2ec8c7e01c7d994ab78e0e1977f9e278e396634aac206d8cefded82"
+    },
+    {
+      "name": "xray",
+      "version": "26.10.29",
+      "url": "https://github.com/XTLS/Xray-core/releases/download/v26.10.29/Xray-windows-64.zip",
+      "sha256": "fce33e81cccf50e7aab572b175519a50b5e0f9d2f5c8d1ed73012ea5c9ad4d58"
+    },
+    {
+      "name": "sing_box",
+      "version": "1.14.4",
+      "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-windows-amd64.zip",
+      "sha256": "99185d75d314a07dbba4a130c8ad986cbeb629a07927975636b341ca61f991df"
+    }
+  ],
+  "rules": [
+    {
+      "name": "geoip-private.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-private.srs",
+      "sha256": "054f6dc11fd80096abeaa5c537b4c768ab297e4c68fac10722d9a0b906a441de"
+    },
+    {
+      "name": "geoip-cn.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-cn.srs",
+      "sha256": "2d717876d0b0e5af0d3451d6a48ff2d19729b11b7e7bfeb19fbee7bb4e7937ed"
+    },
+    {
+      "name": "geoip-facebook.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-facebook.srs",
+      "sha256": "9939bbb49514cb33dd294c0aa6303969da22dac3cdd623cd9930dd2ce2b29b8d"
+    },
+    {
+      "name": "geoip-fastly.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-fastly.srs",
+      "sha256": "58c8bbbb0048e0a50f6e738f733e0f9a30aeea20fd9d20370b4e6124b66c19ab"
+    },
+    {
+      "name": "geoip-google.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-google.srs",
+      "sha256": "0b571e1d382cb790a77a6e1bba87fc7c7600770b28b32cb783c5191e6d517a9d"
+    },
+    {
+      "name": "geoip-netflix.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-netflix.srs",
+      "sha256": "14bb1dd93b6557baef7aa24514f3f4b81d58274f8c971c46ffeefa70f757493f"
+    },
+    {
+      "name": "geoip-telegram.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-telegram.srs",
+      "sha256": "124b6decbcd871517927c15857b26c6898fe614cb2ef5e711d83835e9c700c2b"
+    },
+    {
+      "name": "geoip-twitter.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/b3b66bac2f52bb8d0fef4105d409238eda642d81/geoip-twitter.srs",
+      "sha256": "6ce01a18f68e18e9cd009cfb087b43f5f5890292c614e1fcbac43ed33a0f0adf"
+    },
+    {
+      "name": "geosite-cn.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/60990d71149850dcb139dfc587cf2d95f59fe114/geosite-cn.srs",
+      "sha256": "b19f59e7ee524c410547d8994e3717391a8cd0463f848e812615e23e0ff7d5ca"
+    },
+    {
+      "name": "geosite-gfw.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/60990d71149850dcb139dfc587cf2d95f59fe114/geosite-gfw.srs",
+      "sha256": "2e059c681e9e689dce383d87bd1a0c307b3070c9c45f45764f0c598d2e903eee"
+    },
+    {
+      "name": "geosite-google.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/60990d71149850dcb139dfc587cf2d95f59fe114/geosite-google.srs",
+      "sha256": "20f2ab6a195e17917f1289d0656f356e22acdead599ca45f0587cb88cf0ee3f6"
+    },
+    {
+      "name": "geosite-greatfire.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/60990d71149850dcb139dfc587cf2d95f59fe114/geosite-greatfire.srs",
+      "sha256": "86fd6f342b4ba0b5105bff0094c547216fc2778f6439313a2f24244b2dceb783"
+    },
+    {
+      "name": "geosite-geolocation-cn.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/60990d71149850dcb139dfc587cf2d95f59fe114/geosite-geolocation-cn.srs",
+      "sha256": "208a46d2147df40f1112b33a84018e6d26408f5d6fd3e60182803b19a7b4ff18"
+    },
+    {
+      "name": "geosite-category-ads-all.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/60990d71149850dcb139dfc587cf2d95f59fe114/geosite-category-ads-all.srs",
+      "sha256": "311bbc949da05500426574bfd0192f2457e3720f9d494db3d6aa6f45881fde08"
+    },
+    {
+      "name": "geosite-private.srs",
+      "url": "https://raw.githubusercontent.com/2dust/sing-box-rules/60990d71149850dcb139dfc587cf2d95f59fe114/geosite-private.srs",
+      "sha256": "43030dcf87e601d490c03b7e7db768eab71b188643bccf9c568c9ab976d0d4f6"
+    }
+  ]
+}

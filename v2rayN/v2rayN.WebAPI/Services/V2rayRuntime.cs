@@ -1,4 +1,4 @@
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Net;
 using System.Net.NetworkInformation;
 using ServiceLib;
@@ -536,28 +536,37 @@ public sealed partial class V2rayRuntime(
                 try
                 {
                     await using var operation = await _operations.EnterOperationAsync(operationToken);
-                    await _mutations.RunAsync(async () =>
+                    try
                     {
-                        await SubscriptionHandler.UpdateProcess(Config, id, useProxy, (success, message) =>
+                        await _mutations.RunAsync(async () =>
                         {
-                            var payload = new
+                            await SubscriptionHandler.UpdateProcess(Config, id, useProxy, (success, message) =>
                             {
-                                subscriptionId = id,
-                                success,
-                                code = success ? "ok" : "subscription_update_progress",
-                                messageKey = success ? ApiMessageKeys.SubscriptionSaved : ApiMessageKeys.SubscriptionUpdateProgress,
-                                rawLog = message,
-                            };
-                            _events.Publish("subscription-progress", payload);
-                            AddLog("subscription", message);
-                            return Task.CompletedTask;
-                        });
+                                var payload = new
+                                {
+                                    subscriptionId = id,
+                                    success,
+                                    code = success ? "ok" : "subscription_update_progress",
+                                    messageKey = success ? ApiMessageKeys.SubscriptionSaved : ApiMessageKeys.SubscriptionUpdateProgress,
+                                    rawLog = message,
+                                };
+                                _events.Publish("subscription-progress", payload);
+                                AddLog("subscription", message);
+                                return Task.CompletedTask;
+                            });
 
-                        operation.Token.ThrowIfCancellationRequested();
-                        await EnsureConfigSaveSucceededAsync(() => ConfigHandler.SaveConfig(Config));
-                        await UpdateSubscriptionTimestampLockedAsync(id);
-                    }, operation.Token);
-                    _events.Publish("profiles-changed", new { subscriptionId = id });
+                            operation.Token.ThrowIfCancellationRequested();
+                            await EnsureConfigSaveSucceededAsync(() => ConfigHandler.SaveConfig(Config));
+                            await UpdateSubscriptionTimestampLockedAsync(id);
+                        }, operation.Token);
+                        _events.Publish("profiles-changed", new { subscriptionId = id });
+                    }
+                    finally
+                    {
+                        // Keep the operation lease alive until runtime reconciliation finishes.
+                        // The mutation lock has already been released, preserving core/mutation lock order.
+                        await HandleSubscriptionRuntimeChangeAsync(CancellationToken.None);
+                    }
                 }
                 catch (OperationCanceledException) when (_operations.IsStopping || operationToken.IsCancellationRequested)
                 {
@@ -901,9 +910,10 @@ public sealed partial class V2rayRuntime(
             var existingProcessIds = CoreProcessTracker.CaptureExistingProcessIds();
             var expectedExecutablePaths = GetExpectedCoreExecutablePaths(built);
             var expectedConfigPaths = GetExpectedCoreConfigPaths(built);
+            var loaded = false;
             try
             {
-                await CoreManager.Instance.LoadCore(built.MainResult.Context, built.PreSocksResult?.Context);
+                loaded = await CoreManager.Instance.LoadCore(built.MainResult.Context, built.PreSocksResult?.Context);
             }
             finally
             {
@@ -912,7 +922,7 @@ public sealed partial class V2rayRuntime(
                     expectedExecutablePaths,
                     expectedConfigPaths));
             }
-            var started = await WaitForListenerAsync(port, cancellationToken);
+            var started = loaded && await WaitForListenerAsync(port, cancellationToken);
             var processIds = GetActiveCoreProcessIds();
             if (!started || processIds.Length == 0)
             {

@@ -46,6 +46,11 @@ public record ProtocolExtraItem
     public int? InsecureConcurrency { get; init; }
     public bool? NaiveQuic { get; init; }
 
+    // Nowhere (NW3); runtime listen ports are never persisted or shared.
+    public string? NowhereCarrier { get; init; }
+    public bool? NowhereMorph { get; init; }
+    public string? NowherePin { get; init; }
+
     // MASQUE
     public string? MasquePath { get; init; }
     public string? MasqueHeaders { get; init; }

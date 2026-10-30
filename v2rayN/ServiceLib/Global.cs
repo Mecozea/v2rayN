@@ -246,7 +246,8 @@ public class Global
         { EConfigType.TUIC, "tuic://" },
         { EConfigType.WireGuard, "wireguard://" },
         { EConfigType.Anytls, "anytls://" },
-        { EConfigType.Naive, "naive://" }
+        { EConfigType.Naive, "naive://" },
+        { EConfigType.Nowhere, "nowhere://" }
     };
 
     public static readonly Dictionary<EConfigType, string> ProtocolTypes = new()
@@ -262,6 +263,7 @@ public class Global
         { EConfigType.WireGuard, "wireguard" },
         { EConfigType.Anytls, "anytls" },
         { EConfigType.Naive, "naive" },
+        { EConfigType.Nowhere, "nowhere" },
         { EConfigType.MASQUE, "masque" },
     };
 
@@ -665,7 +667,8 @@ public class Global
         { ECoreType.overtls, "ShadowsocksR-Live/overtls" },
         { ECoreType.shadowquic, "spongebob888/shadowquic" },
         { ECoreType.mieru, "enfein/mieru" },
-        { ECoreType.v2rayN, "2dust/v2rayN" },
+        { ECoreType.Nowhere, "NodePassProject/Nowhere" },
+        { ECoreType.v2rayN, "Mecozea/v2rayN" },
     };
 
     public static readonly List<string> OtherGeoUrls =

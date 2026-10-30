@@ -9,6 +9,7 @@ public class FmtHandlerTests
     /// </summary>
     private static readonly Dictionary<EConfigType, Func<ProfileItem>> ShareProfileFactories = new()
     {
+        [EConfigType.Nowhere] = () => NowhereFmt.Resolve("nowhere://0123456789abcdef0123456789abcdef@relay.example:443?net=udp&morph=0", out _)!,
         [EConfigType.VMess] = CreateVmessProfile,
         [EConfigType.Shadowsocks] = CreateShadowsocksProfile,
         [EConfigType.SOCKS] = CreateSocksProfile,

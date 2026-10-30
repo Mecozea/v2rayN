@@ -125,14 +125,15 @@ public sealed class AppManager
         {
             Logging.SaveLog("AppExitAsync Begin");
 
-            await SysProxyHandler.UpdateSysProxy(_config, true);
             AppEvents.AppExitRequested.Publish();
             await Task.Delay(50); //Wait for AppExitRequested to be processed
 
+            // Stop owned resources even if a later configuration/statistics save fails.
+            // CoreStop also clears only the system proxy installed by this session.
+            await CoreManager.Instance.CoreStop();
             await ConfigHandler.SaveConfig(_config);
             await ProfileExManager.Instance.SaveTo();
             await StatisticsManager.Instance.SaveTo();
-            await CoreManager.Instance.CoreStop();
             StatisticsManager.Instance.Close();
 
             Logging.SaveLog("AppExitAsync End");
@@ -665,6 +666,11 @@ public sealed class AppManager
 
     public ECoreType GetCoreType(ProfileItem? profileItem, EConfigType eConfigType)
     {
+        if (eConfigType == EConfigType.Nowhere)
+        {
+            return ECoreType.Nowhere;
+        }
+
         if (profileItem?.CoreType != null)
         {
             return (ECoreType)profileItem.CoreType;

@@ -5,10 +5,16 @@ public class ProcessService : IDisposable
     private readonly Process _process;
     private readonly Func<bool, string, Task>? _updateFunc;
     private bool _isDisposed;
+    private bool _started;
+    private ProcessService? _ownedProcess;
+
+    public void AttachOwnedProcess(ProcessService process) => _ownedProcess = process;
+
+    public event Action? Exited;
 
     public int Id => _process.Id;
     public IntPtr Handle => _process.Handle;
-    public bool HasExited => _process.HasExited;
+    public bool HasExited => !_started || _isDisposed || _process.HasExited;
 
     public ProcessService(
         string fileName,
@@ -17,7 +23,8 @@ public class ProcessService : IDisposable
         bool displayLog,
         bool redirectInput,
         Dictionary<string, string>? environmentVars,
-        Func<bool, string, Task>? updateFunc)
+        Func<bool, string, Task>? updateFunc,
+        IReadOnlyList<string>? argumentList = null)
     {
         _updateFunc = updateFunc;
 
@@ -39,6 +46,17 @@ public class ProcessService : IDisposable
             EnableRaisingEvents = true
         };
 
+        _process.Exited += (_, _) => Exited?.Invoke();
+
+        if (argumentList != null)
+        {
+            _process.StartInfo.Arguments = string.Empty;
+            foreach (var argument in argumentList)
+            {
+                _process.StartInfo.ArgumentList.Add(argument);
+            }
+        }
+
         if (environmentVars != null)
         {
             foreach (var kv in environmentVars)
@@ -56,6 +74,7 @@ public class ProcessService : IDisposable
     public async Task StartAsync(string pwd = null)
     {
         _process.Start();
+        _started = true;
 
         if (_process.StartInfo.RedirectStandardOutput)
         {
@@ -67,52 +86,38 @@ public class ProcessService : IDisposable
         {
             await Task.Delay(10);
             await _process.StandardInput.WriteLineAsync(pwd);
+            _process.StandardInput.Close(); // sudo must fail on EOF rather than wait forever for another password.
         }
     }
 
     public async Task StopAsync()
     {
-        if (_process.HasExited)
-        {
-            return;
-        }
-
         try
         {
-            if (_process.StartInfo.RedirectStandardOutput)
+            if (!HasExited)
             {
-                try
-                {
-                    _process.CancelOutputRead();
-                }
-                catch { }
-                try
-                {
-                    _process.CancelErrorRead();
-                }
-                catch { }
+                // Only the process handle owned by this session is targeted, including children.
+                _process.Kill(entireProcessTree: true);
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                try { await _process.WaitForExitAsync(timeout.Token); }
+                catch (OperationCanceledException) { }
             }
-
-            try
-            {
-                if (Utils.IsNonWindows())
-                {
-                    _process.Kill(true);
-                }
-            }
-            catch { }
-
-            try
-            {
-                _process.Kill();
-            }
-            catch { }
-
-            await Task.Delay(100);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException) { } // Process exited concurrently or never started.
+        catch (System.ComponentModel.Win32Exception)
         {
-            await _updateFunc?.Invoke(true, ex.Message);
+            // A process can disappear between HasExited and Kill.
+            if (!HasExited) { throw; }
+        }
+        finally
+        {
+            // A frontend stops before the Vector on which it depends.
+            var owned = Interlocked.Exchange(ref _ownedProcess, null);
+            if (owned != null)
+            {
+                try { await owned.StopAsync(); }
+                finally { owned.Dispose(); }
+            }
         }
     }
 
@@ -144,37 +149,25 @@ public class ProcessService : IDisposable
 
     public void Dispose()
     {
-        if (_isDisposed)
-        {
-            return;
-        }
-
+        if (_isDisposed) { return; }
         try
         {
-            if (!_process.HasExited)
+            if (_started && !_process.HasExited)
             {
                 try
                 {
-                    _process.CancelOutputRead();
+                    _process.Kill(entireProcessTree: true);
+                    _process.WaitForExit(3000);
                 }
-                catch { }
-                try
-                {
-                    _process.CancelErrorRead();
-                }
-                catch { }
-
-                _process.Kill();
+                catch (InvalidOperationException) { }
             }
-
-            _process.Dispose();
         }
-        catch (Exception ex)
+        finally
         {
-            _updateFunc?.Invoke(true, ex.Message);
+            _isDisposed = true;
+            _process.Dispose();
+            Interlocked.Exchange(ref _ownedProcess, null)?.Dispose();
+            GC.SuppressFinalize(this);
         }
-
-        _isDisposed = true;
-        GC.SuppressFinalize(this);
     }
 }

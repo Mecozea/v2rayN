@@ -48,6 +48,14 @@ public partial class UpdateService(Config config, Func<bool, string, Task> updat
 
     public async Task CheckUpdateCore(ECoreType type, bool preRelease, bool blProxy = true, CancellationToken cancellationToken = default)
     {
+        if (type == ECoreType.Nowhere)
+        {
+            var check = await CheckHasUpdateOnly(type, false, blProxy, cancellationToken);
+            if (!check.Success) { await UpdateFunc(false, check.Msg ?? ""); return; }
+            await CoreManager.Instance.UpdateNowhereAsync(false, cancellationToken, blProxy);
+            await UpdateFunc(true, "");
+            return;
+        }
         var url = string.Empty;
         var fileName = string.Empty;
 
@@ -106,6 +114,11 @@ public partial class UpdateService(Config config, Func<bool, string, Task> updat
             return new UpdateResult(false, ResUI.MsgNotSupport);
         }
 
+        if (type == ECoreType.Nowhere)
+        {
+            return await NowhereInstaller.CheckUpdateAsync(
+                Utils.GetBinPath(NowhereInstaller.ExecutableName, ECoreType.Nowhere.ToString()), cancellationToken);
+        }
         var downloadHandle = new DownloadService();
         var checkPreRelease = CoreInfoManager.Instance.GetCheckPreRelease(type, preRelease);
         return await CheckUpdateAsync(downloadHandle, type, checkPreRelease, blProxy, cancellationToken);
@@ -125,7 +138,7 @@ public partial class UpdateService(Config config, Func<bool, string, Task> updat
             var result = await CheckHasUpdateOnly(type, preRelease, blProxy, cancellationToken);
             if (result.Success && result.Version != null)
             {
-                var msg = string.Format(ResUI.MsgCheckUpdateHasNewVersion, type, result.Version);
+                var msg = type == ECoreType.Nowhere ? result.Msg! : string.Format(ResUI.MsgCheckUpdateHasNewVersion, type, result.Version);
                 msgs.Add(msg);
                 AppManager.Instance.SetLastCheckUpdateResult(type, msg);
             }
@@ -217,7 +230,11 @@ public partial class UpdateService(Config config, Func<bool, string, Task> updat
 
             tagName = lastUrl?.Split("/tag/").LastOrDefault();
         }
-        return new UpdateResult(true, new SemanticVersion(tagName));
+        if (tagName.IsNullOrEmpty() || !SemanticVersion.TryParse(tagName, out var parsedVersion))
+        {
+            return new UpdateResult(false, "No valid release was found in " + coreInfo?.Url);
+        }
+        return new UpdateResult(true, parsedVersion);
     }
 
     [GeneratedRegex(@"v?(?<version>\d+\.\d+\.\d+(?:-[0-9a-zA-Z.-]+)?(?:\+[0-9a-zA-Z.-]+)?)", RegexOptions.IgnoreCase)]

@@ -1,4 +1,4 @@
-namespace ServiceLib.ViewModels;
+﻿namespace ServiceLib.ViewModels;
 
 public partial class ProfilesViewModel : MyReactiveObject
 {
@@ -749,6 +749,12 @@ public partial class ProfilesViewModel : MyReactiveObject
             return;
         }
 
+        if (item.ConfigType == EConfigType.Nowhere)
+        {
+            NoticeManager.Instance.Enqueue(ResUI.NowhereExportShareInstead);
+            return;
+        }
+
         var (context, validatorResult) = await CoreConfigContextBuilder.Build(_config, item);
         if (NoticeManager.Instance.NotifyValidatorResult(validatorResult) && !validatorResult.Success)
         {
@@ -780,6 +786,12 @@ public partial class ProfilesViewModel : MyReactiveObject
         {
             return;
         }
+        if (item.ConfigType == EConfigType.Nowhere)
+        {
+            NoticeManager.Instance.Enqueue(ResUI.NowhereExportShareInstead);
+            return;
+        }
+
         var (context, validatorResult) = await CoreConfigContextBuilder.Build(_config, item);
         if (NoticeManager.Instance.NotifyValidatorResult(validatorResult) && !validatorResult.Success)
         {

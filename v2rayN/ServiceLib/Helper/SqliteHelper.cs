@@ -7,13 +7,14 @@ public sealed class SQLiteHelper
     private static readonly Lazy<SQLiteHelper> _instance = new(() => new());
     public static SQLiteHelper Instance => _instance.Value;
     private readonly string _connstr;
+    private readonly SemaphoreSlim _nowhereBackupGate = new(1, 1);
     private SQLiteConnection _db;
     private SQLiteAsyncConnection _dbAsync;
     private readonly string _configDB = "guiNDB.db";
 
-    public SQLiteHelper()
+    public SQLiteHelper(string? databasePath = null)
     {
-        _connstr = Utils.GetConfigPath(_configDB);
+        _connstr = databasePath ?? Utils.GetConfigPath(_configDB);
         _db = new SQLiteConnection(_connstr, false);
         _dbAsync = new SQLiteAsyncConnection(_connstr, false);
     }
@@ -25,27 +26,87 @@ public sealed class SQLiteHelper
 
     public async Task<int> InsertAllAsync(IEnumerable models)
     {
-        return await _dbAsync.InsertAllAsync(models, runInTransaction: true).ConfigureAwait(false);
+        var snapshot = models.Cast<object>().ToList();
+        await EnsurePreNowhereBackupAsync(snapshot);
+        return await _dbAsync.InsertAllAsync(snapshot, runInTransaction: true).ConfigureAwait(false);
+    }
+
+    public async Task ReplaceSubscriptionProfilesAsync(string subid, IReadOnlyList<ProfileItem> profiles)
+    {
+        await EnsurePreNowhereBackupAsync(profiles.Cast<object>());
+        await _dbAsync.RunInTransactionAsync(connection =>
+        {
+            connection.Execute("DELETE FROM ProfileItem WHERE Subid = ? AND IsSub = ?", subid, true);
+            foreach (var profile in profiles)
+            {
+                connection.InsertOrReplace(profile);
+            }
+        });
     }
 
     public async Task<int> InsertAsync(object model)
     {
+        await EnsurePreNowhereBackupAsync([model]);
         return await _dbAsync.InsertAsync(model);
     }
 
     public async Task<int> ReplaceAsync(object model)
     {
+        await EnsurePreNowhereBackupAsync([model]);
         return await _dbAsync.InsertOrReplaceAsync(model);
     }
 
     public async Task<int> UpdateAsync(object model)
     {
+        await EnsurePreNowhereBackupAsync([model]);
         return await _dbAsync.UpdateAsync(model);
     }
 
     public async Task<int> UpdateAllAsync(IEnumerable models)
     {
-        return await _dbAsync.UpdateAllAsync(models, runInTransaction: true).ConfigureAwait(false);
+        var snapshot = models.Cast<object>().ToList();
+        await EnsurePreNowhereBackupAsync(snapshot);
+        return await _dbAsync.UpdateAllAsync(snapshot, runInTransaction: true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Snapshot the complete live database through SQLite's online backup API before the first
+    /// Nowhere write. Never copy a live database file: committed data may still be in its WAL.
+    /// A failed backup aborts the mutation; subsequent writes preserve the original backup.
+    /// </summary>
+    private async Task EnsurePreNowhereBackupAsync(IEnumerable<object> models)
+    {
+        if (!models.OfType<ProfileItem>().Any(item => item.ConfigType == EConfigType.Nowhere))
+        {
+            return;
+        }
+        await _nowhereBackupGate.WaitAsync();
+        string? temporary = null;
+        try
+        {
+            var target = _connstr + ".pre-nowhere.bak";
+            if (File.Exists(target))
+            {
+                return;
+            }
+            temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            await _dbAsync.BackupAsync(temporary);
+            File.Move(temporary, target);
+        }
+        finally
+        {
+            try
+            {
+                if (temporary != null && File.Exists(temporary))
+                {
+                    File.Delete(temporary);
+                }
+            }
+            finally
+            {
+                _nowhereBackupGate.Release();
+            }
+        }
     }
 
     public async Task<int> DeleteAsync(object model)

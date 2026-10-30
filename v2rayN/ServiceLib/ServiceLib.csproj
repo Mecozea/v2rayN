@@ -1,8 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 	</PropertyGroup>
+
+	<ItemGroup>
+        <Compile Include="..\AmazTool\AppUpdateTransaction.cs" Link="Update/AppUpdateTransaction.cs" />
+    </ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Downloader" />

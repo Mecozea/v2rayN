@@ -1,4 +1,4 @@
-namespace ServiceLib.ViewModels;
+﻿namespace ServiceLib.ViewModels;
 
 public partial class AddServerViewModel : MyReactiveObject, ICloseable
 {
@@ -135,6 +135,15 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
 
     [Reactive]
     public partial int? KcpMtu { get; set; }
+
+    [Reactive]
+    public partial string NowhereCarrier { get; set; }
+
+    [Reactive]
+    public partial bool NowhereMorph { get; set; }
+
+    [Reactive]
+    public partial string NowherePin { get; set; }
 
     public string TransportHeaderType
     {
@@ -296,7 +305,8 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
         {
             SelectedSource = JsonUtils.DeepCopy(profileItem);
         }
-        CoreType = SelectedSource?.CoreType?.ToString();
+        CoreType = SelectedSource?.ConfigType == EConfigType.Nowhere
+            ? nameof(ECoreType.Nowhere) : SelectedSource?.CoreType?.ToString();
         AllowInsecure = SelectedSource?.GetAllowInsecure() == true;
         MuxEnabled = SelectedSource?.MuxEnabled == true;
         Cert = SelectedSource?.Cert ?? string.Empty;
@@ -328,6 +338,9 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
         Hy2RealmUrl = protocolExtra.Hy2RealmUrl ?? string.Empty;
         GeckoMinPacketSize = protocolExtra.GeckoMinPacketSize.ToInt();
         GeckoMaxPacketSize = protocolExtra.GeckoMaxPacketSize.ToInt();
+        NowhereCarrier = protocolExtra.NowhereCarrier ?? "tcp";
+        NowhereMorph = protocolExtra.NowhereMorph ?? true;
+        NowherePin = protocolExtra.NowherePin ?? string.Empty;
         MasquePath = protocolExtra.MasquePath ?? string.Empty;
         MasqueHeaders = protocolExtra.MasqueHeaders ?? string.Empty;
 
@@ -377,13 +390,37 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
                 return;
             }
         }
-        if (SelectedSource.ConfigType is not EConfigType.SOCKS and not EConfigType.HTTP)
+        if (SelectedSource.ConfigType is not EConfigType.SOCKS and not EConfigType.HTTP and not EConfigType.Nowhere)
         {
             if (SelectedSource.Password.IsNullOrEmpty())
             {
                 NoticeManager.Instance.Enqueue(ResUI.FillUUID);
                 return;
             }
+        }
+        if (SelectedSource.ConfigType == EConfigType.Nowhere)
+        {
+            SelectedSource.SetProtocolExtra(SelectedSource.GetProtocolExtra() with
+            {
+                NowhereCarrier = NowhereCarrier,
+                NowhereMorph = NowhereMorph,
+                NowherePin = NowherePin.NullIfEmpty(),
+            });
+            if (!NowhereFmt.IsValid(SelectedSource))
+            {
+                NoticeManager.Instance.Enqueue(ResUI.NowhereInvalidSettings);
+                return;
+            }
+            if (await ConfigHandler.AddServer(_config, SelectedSource) == 0)
+            {
+                NoticeManager.Instance.Enqueue(ResUI.OperationSuccess);
+                RequestClose?.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                NoticeManager.Instance.Enqueue(ResUI.OperationFailed);
+            }
+            return;
         }
         HyRealm? realm = null;
         if (!Hy2RealmUrl.IsNullOrEmpty())

@@ -1903,4 +1903,6 @@
   <data name="TbSortingProcess" xml:space="preserve">
     <value>行程</value>
   </data>
+  <data name="NowhereCoreCurrent" xml:space="preserve"><value>Nowhere {0} 已安裝並通過驗證。</value></data>
+  <data name="NowhereCoreAvailable" xml:space="preserve"><value>Nowhere {0} 可安裝 / 更新。</value></data>
 </root>

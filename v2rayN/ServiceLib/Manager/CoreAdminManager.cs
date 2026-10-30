@@ -29,21 +29,24 @@ public class CoreAdminManager
         await _updateFunc?.Invoke(notify, msg);
     }
 
+    // Double quotes alone still execute shell expansions in user-controlled paths.
+    public static string QuoteShellArgument(string value) => "'" + value.Replace("'", "'\"'\"'") + "'";
+
     public async Task<ProcessService?> RunProcessAsLinuxSudo(string fileName, CoreInfo coreInfo, string configPath)
     {
         StringBuilder sb = new();
         sb.AppendLine("#!/bin/bash");
-        var cmdLine = $"{fileName.AppendQuotes()} {string.Format(coreInfo.Arguments, Utils.GetBinConfigPath(configPath).AppendQuotes())}";
+        var cmdLine = $"{QuoteShellArgument(fileName)} {string.Format(coreInfo.Arguments, QuoteShellArgument(Utils.GetBinConfigPath(configPath)))}";
 
         // Passing environment variables to the sudo command, here it only xray or sing-box.
         if (coreInfo.Environment.Count > 0)
         {
-            var envArgs = string.Join(" ", coreInfo.Environment.Where(kv => kv.Value.IsNotEmpty()).Select(kv => $"{kv.Key}={kv.Value.AppendQuotes()}"));
-            sb.AppendLine($"exec sudo -S -- env {envArgs} {cmdLine}");
+            var envArgs = string.Join(" ", coreInfo.Environment.Where(kv => kv.Value.IsNotEmpty()).Select(kv => $"{kv.Key}={QuoteShellArgument(string.Format(kv.Value, Utils.GetBinConfigPath(configPath)))}"));
+            sb.AppendLine($"exec sudo -S -p '' -- env {envArgs} {cmdLine}");
         }
         else
         {
-            sb.AppendLine($"exec sudo -S -- {cmdLine}");
+            sb.AppendLine($"exec sudo -S -p '' -- {cmdLine}");
         }
 
         var shFilePath = await FileUtils.CreateLinuxShellFile("run_as_sudo.sh", sb.ToString(), true);
@@ -58,15 +61,23 @@ public class CoreAdminManager
             updateFunc: _updateFunc
         );
 
-        await procService.StartAsync(AppManager.Instance.LinuxSudoPwd);
-
-        if (procService is null or { HasExited: true })
+        try
         {
-            throw new Exception(ResUI.FailedToRunCore);
+            await procService.StartAsync(AppManager.Instance.LinuxSudoPwd);
+            _linuxSudoPid = procService.Id;
+            if (procService.HasExited) { throw new Exception(ResUI.FailedToRunCore); }
+            return procService;
         }
-        _linuxSudoPid = procService.Id;
-
-        return procService;
+        catch
+        {
+            try { await KillProcessAsLinuxSudo(); }
+            finally
+            {
+                try { await procService.StopAsync(); }
+                finally { procService.Dispose(); }
+            }
+            throw;
+        }
     }
 
     public async Task KillProcessAsLinuxSudo()
@@ -80,14 +91,10 @@ public class CoreAdminManager
         {
             var shellFileName = Utils.IsMacOS() ? Global.KillAsSudoOSXShellFileName : Global.KillAsSudoLinuxShellFileName;
             var shFilePath = await FileUtils.CreateLinuxShellFile("kill_as_sudo.sh", EmbedUtils.GetEmbedText(shellFileName), true);
-            if (shFilePath.Contains(' '))
-            {
-                shFilePath = shFilePath.AppendQuotes();
-            }
-            var arg = new List<string>() { "-c", $"sudo -S {shFilePath} {_linuxSudoPid}" };
-            var result = await Cli.Wrap(Global.LinuxBash)
+            var arg = new List<string>() { "-S", "-p", "", "--", "/bin/bash", shFilePath, _linuxSudoPid.ToString() };
+            var result = await Cli.Wrap("/usr/bin/sudo")
                 .WithArguments(arg)
-                .WithStandardInputPipe(PipeSource.FromString(AppManager.Instance.LinuxSudoPwd))
+                .WithStandardInputPipe(PipeSource.FromString(AppManager.Instance.LinuxSudoPwd + "\n"))
                 .ExecuteBufferedAsync();
 
             await UpdateFunc(false, result.StandardOutput.ToString());

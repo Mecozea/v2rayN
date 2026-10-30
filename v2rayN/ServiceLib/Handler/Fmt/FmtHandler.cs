@@ -20,6 +20,7 @@ public class FmtHandler
                 EConfigType.WireGuard => WireguardFmt.ToUri(item),
                 EConfigType.Anytls => AnytlsFmt.ToUri(item),
                 EConfigType.Naive => NaiveFmt.ToUri(item),
+                EConfigType.Nowhere => NowhereFmt.ToUri(item),
                 _ => null,
             };
 
@@ -45,6 +46,10 @@ public class FmtHandler
                 return null;
             }
 
+            if (str.StartsWith(Global.ProtocolShares[EConfigType.Nowhere], StringComparison.OrdinalIgnoreCase))
+            {
+                return NowhereFmt.Resolve(str, out msg);
+            }
             if (str.StartsWith(Global.ProtocolShares[EConfigType.VMess]))
             {
                 return VmessFmt.Resolve(str, out msg);

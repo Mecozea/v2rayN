@@ -1,0 +1,42 @@
+{
+  "tested_at": "2026-10-30T16:49:51.887515+08:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "nowhere_version": "nowhere-v3.2.0 windows/x86_64",
+  "nowhere_sha256": "36b90a7eabbe530d508ec0c941f60c22d8decf7177f0b08261c13c81cdc0490c",
+  "frontend_version": "Xray 26.10.29 (Xray, Penetrates Everything.) 0afec66 (go1.27.3 windows/amd64)",
+  "scope": "local loopback only; no system proxy or TUN changes",
+  "results": [
+    {
+      "carrier": "tcp",
+      "morph": 0,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray"
+    },
+    {
+      "carrier": "tcp",
+      "morph": 1,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray"
+    },
+    {
+      "carrier": "udp",
+      "morph": 0,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray"
+    },
+    {
+      "carrier": "udp",
+      "morph": 1,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray"
+    }
+  ]
+}

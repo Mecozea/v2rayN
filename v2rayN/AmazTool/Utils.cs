@@ -55,7 +55,7 @@ internal class Utils
             StartInfo = new()
             {
                 UseShellExecute = true,
-                FileName = V2rayN,
+                FileName = GetPath(OperatingSystem.IsWindows() ? V2rayN + ".exe" : V2rayN),
                 WorkingDirectory = StartupPath()
             }
         };

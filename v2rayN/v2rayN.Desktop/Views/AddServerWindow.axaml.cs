@@ -1,4 +1,4 @@
-using v2rayN.Desktop.Base;
+﻿using v2rayN.Desktop.Base;
 
 namespace v2rayN.Desktop.Views;
 
@@ -18,6 +18,7 @@ public partial class AddServerWindow : WindowBase<AddServerViewModel>
 
         cmbCoreType.ItemsSource = Global.CoreTypes.AppendEmpty();
         cmbNetwork.ItemsSource = Global.Networks;
+        cmbNowhereCarrier.ItemsSource = new[] { "tcp", "udp" };
 
         cmbHeaderTypeRaw.ItemsSource = new List<string> { Global.None, Global.RawHeaderHttp };
 
@@ -126,6 +127,14 @@ public partial class AddServerWindow : WindowBase<AddServerViewModel>
                             this.Bind(ViewModel, vm => vm.WgInterfaceAddress, v => v.txtRequestHost9.Text).DisposeWith(currentTypeDisposables);
                             this.Bind(ViewModel, vm => vm.WgMtu, v => v.txtShortId9.Text).DisposeWith(currentTypeDisposables);
                             this.Bind(ViewModel, vm => vm.WgDns, v => v.txtDns.Text).DisposeWith(currentTypeDisposables);
+                            break;
+
+                        case EConfigType.Nowhere:
+                            this.Bind(ViewModel, vm => vm.SelectedSource.Password, v => v.txtNowhereKey.Text).DisposeWith(currentTypeDisposables);
+                            this.Bind(ViewModel, vm => vm.NowhereCarrier, v => v.cmbNowhereCarrier.SelectedItem).DisposeWith(currentTypeDisposables);
+                            this.Bind(ViewModel, vm => vm.NowhereMorph, v => v.togNowhereMorph.IsChecked).DisposeWith(currentTypeDisposables);
+                            this.Bind(ViewModel, vm => vm.SelectedSource.Sni, v => v.txtNowhereSni.Text).DisposeWith(currentTypeDisposables);
+                            this.Bind(ViewModel, vm => vm.NowherePin, v => v.txtNowherePin.Text).DisposeWith(currentTypeDisposables);
                             break;
 
                         case EConfigType.Anytls:
@@ -267,6 +276,16 @@ public partial class AddServerWindow : WindowBase<AddServerViewModel>
                 gridTransport.IsVisible = false;
                 gridTls.IsVisible = false;
 
+                break;
+
+            case EConfigType.Nowhere:
+                cmbCoreType.ItemsSource = new[] { nameof(ECoreType.Nowhere) };
+                gridNowhere.IsVisible = true;
+                sepa2.IsVisible = false;
+                gridTransport.IsVisible = false;
+                gridTls.IsVisible = false;
+                gridFinalmask.IsVisible = false;
+                cmbCoreType.IsEnabled = false;
                 break;
 
             case EConfigType.Anytls:

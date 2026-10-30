@@ -1,0 +1,56 @@
+{
+  "tested_at": "2026-10-30T19:46:20.884188+08:00",
+  "platform": "Darwin-25.2.0-arm64-arm-64bit-Mach-O",
+  "nowhere_version": "nowhere-v3.2.0 macos/aarch64",
+  "nowhere_sha256": "774c5126ae706f9c1569ba11e42e1d32cac1f807fb28fd72e5c370860c1538f9",
+  "frontend_version": "Xray 26.10.29 (Xray, Penetrates Everything.) 0afec66 (go1.27.3 darwin/arm64)",
+  "scope": "local loopback only; no system proxy or TUN changes",
+  "results": [
+    {
+      "carrier": "tcp",
+      "morph": 0,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray",
+      "rejected": []
+    },
+    {
+      "carrier": "tcp",
+      "morph": 1,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray",
+      "rejected": [
+        "wrong-pin",
+        "wrong-key",
+        "wrong-morph",
+        "untrusted-self-signed"
+      ]
+    },
+    {
+      "carrier": "udp",
+      "morph": 0,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray",
+      "rejected": []
+    },
+    {
+      "carrier": "udp",
+      "morph": 1,
+      "tcp": "pass",
+      "udp": "pass",
+      "trust": "local-generated-certificate-pin",
+      "frontend": "xray",
+      "rejected": [
+        "wrong-pin",
+        "wrong-key",
+        "wrong-morph",
+        "untrusted-self-signed"
+      ]
+    }
+  ]
+}

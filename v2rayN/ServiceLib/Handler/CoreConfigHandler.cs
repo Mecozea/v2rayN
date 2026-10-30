@@ -13,6 +13,12 @@ public static class CoreConfigHandler
         var result = new RetResult();
         var node = context.Node;
 
+        if (node.ConfigType == EConfigType.Nowhere)
+        {
+            // Vector accepts a structured URL, not a configuration file. Never write its key to disk.
+            return new RetResult { Success = NowhereFmt.IsValid(node), Msg = ResUI.CheckServerSettings };
+        }
+
         if (node.ConfigType == EConfigType.Custom)
         {
             result = node.CoreType switch

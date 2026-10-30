@@ -167,7 +167,8 @@ public partial class CheckUpdateViewModel : MyReactiveObject
             var result = await updateService.CheckHasUpdateOnly(item.CoreType.Value, item.IsCheckPreRelease, EnableUpdateViaProxy);
             if (result.Success && result.Version != null)
             {
-                await UpdateView(item.CoreType, string.Format(ResUI.MsgCheckUpdateHasNewVersion, item.CoreType, result.Version));
+                await UpdateView(item.CoreType, item.CoreType == ECoreType.Nowhere
+                    ? result.Msg : string.Format(ResUI.MsgCheckUpdateHasNewVersion, item.CoreType, result.Version));
             }
             else
             {
@@ -212,6 +213,10 @@ public partial class CheckUpdateViewModel : MyReactiveObject
                 }
                 await CheckUpdateN(item.IsCheckPreRelease);
             }
+            else if (item.CoreType == ECoreType.Nowhere)
+            {
+                await CheckUpdateNowhere();
+            }
             else if (item.CoreType.HasValue)
             {
                 await CheckUpdateCore(item, item.IsCheckPreRelease);
@@ -219,6 +224,31 @@ public partial class CheckUpdateViewModel : MyReactiveObject
         }
 
         await UpdateFinished();
+    }
+
+    private async Task CheckUpdateNowhere()
+    {
+        try
+        {
+            var result = await new UpdateService(_config, (_, _) => Task.CompletedTask)
+                .CheckHasUpdateOnly(ECoreType.Nowhere, false, EnableUpdateViaProxy);
+            if (!result.Success)
+            {
+                await UpdateView(ECoreType.Nowhere, result.Msg);
+                _lstUpdated.RemoveAll(x => x.CoreType == ECoreType.Nowhere);
+                return;
+            }
+            await UpdateView(ECoreType.Nowhere, $"{ResUI.Downloading} Nowhere {NowhereInstaller.Version}");
+            await CoreManager.Instance.UpdateNowhereAsync(false, updateViaProxy: EnableUpdateViaProxy);
+            UpdatedPlusPlus(ECoreType.Nowhere, "");
+            await UpdateView(ECoreType.Nowhere, ResUI.MsgUpdateV2rayCoreSuccessfully);
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            await UpdateView(ECoreType.Nowhere, ex.Message);
+            _lstUpdated.RemoveAll(x => x.CoreType == ECoreType.Nowhere);
+        }
     }
 
     private void UpdatedPlusPlus(ECoreType? coreType, string fileName)
@@ -339,6 +369,9 @@ public partial class CheckUpdateViewModel : MyReactiveObject
                 return;
             }
 
+            // Reject malformed/incomplete archives before exiting the current GUI and its proxy.
+            // The standalone updater independently repeats staging before touching installed files.
+            using (await Task.Run(() => AmazTool.AppUpdateTransaction.Prepare(fileName, Utils.GetBaseDirectory()))) { }
             var id = ProcUtils.ProcessStart(upgradeFileName, fileName, Utils.StartupPath());
             if (id > 0)
             {

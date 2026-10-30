@@ -46,7 +46,7 @@ public class CoreConfigContextBuilder
             SimpleDnsItem = config.SimpleDNSItem,
             ProtectDomainList = [],
             RawDnsItem = await AppManager.Instance.GetDNSItem(coreType),
-            RoutingItem = await ConfigHandler.GetDefaultRouting(config),
+            RoutingItem = await ConfigHandler.GetDefaultRouting(config) ?? new RoutingItem { RuleSet = "[]" },
             IsWindows = Utils.IsWindows(),
             IsMacOS = Utils.IsMacOS(),
             IsLinux = Utils.IsLinux(),
@@ -151,6 +151,47 @@ public class CoreConfigContextBuilder
             return new CoreConfigContextBuilderAllResult(mainResult, null);
         }
 
+        if (node.ConfigType == EConfigType.Nowhere)
+        {
+            var port = NowhereRuntime.AllocatePort();
+            var frontCore = AppManager.Instance.GetCoreType(null, EConfigType.SOCKS);
+            if (frontCore is not (ECoreType.Xray or ECoreType.sing_box))
+            {
+                frontCore = ECoreType.Xray;
+            }
+            if (config.TunModeItem.EnableTun)
+            {
+                frontCore = ECoreType.sing_box;
+            }
+            var socks = new ProfileItem
+            {
+                IndexId = $"nowhere-bridge-{Utils.GetGuid(false)}",
+                ConfigType = EConfigType.SOCKS,
+                CoreType = frontCore,
+                Address = Global.Loopback,
+                Port = port,
+                Remarks = node.Remarks,
+            };
+            var frontResult = await Build(config, socks);
+            var domains = new HashSet<string>(mainResult.Context.ProtectDomainList);
+            // Keep the remote endpoint independent of the local SOCKS replacement.
+            var frontConfig = frontResult.Context.AppConfig;
+            if (IPAddress.TryParse(node.Address, out var remoteIp))
+            {
+                frontConfig = JsonUtils.DeepCopy(frontConfig);
+                frontConfig.TunModeItem.RouteExcludeAddress ??= [];
+                frontConfig.TunModeItem.RouteExcludeAddress.Add($"{remoteIp}/{(remoteIp.AddressFamily == AddressFamily.InterNetworkV6 ? 128 : 32)}");
+            }
+            else
+            {
+                domains.Add(node.Address);
+            }
+            var protectedCores = new HashSet<ECoreType>(frontResult.Context.ProtectCoreTypeList) { ECoreType.Nowhere };
+            return new CoreConfigContextBuilderAllResult(
+                mainResult with { Context = mainResult.Context with { IsTunEnabled = false, NowherePort = port } },
+                frontResult with { Context = frontResult.Context with { ProtectDomainList = domains, ProtectCoreTypeList = protectedCores, AppConfig = frontConfig } });
+        }
+
         var preResult = await BuildPreSocksIfNeeded(mainResult.Context);
         if (preResult is null)
         {
@@ -230,6 +271,7 @@ public class CoreConfigContextBuilder
         if (includeSubChain)
         {
             var (virtualChainNode, chainValidatorResult) = await BuildSubscriptionChainNodeAsync(node);
+            if (!chainValidatorResult.Success) { return (node, chainValidatorResult); }
             if (virtualChainNode != null)
             {
                 context.AllProxiesMap[virtualChainNode.IndexId] = virtualChainNode;
@@ -269,6 +311,15 @@ public class CoreConfigContextBuilder
         var subItem = await AppManager.Instance.GetSubItem(node.Subid);
         if (subItem == null)
         {
+            return (null, result);
+        }
+
+        if (node.ConfigType == EConfigType.Nowhere)
+        {
+            if (!subItem.PrevProfile.IsNullOrEmpty() || !subItem.NextProfile.IsNullOrEmpty())
+            {
+                result.Errors.Add("Nowhere subscription proxy chains are not supported. Remove the previous/next profile settings to connect this node.");
+            }
             return (null, result);
         }
 

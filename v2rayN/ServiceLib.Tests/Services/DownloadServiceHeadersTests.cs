@@ -150,6 +150,10 @@ public class DownloadServiceHeadersTests
             catch (OperationCanceledException)
             {
             }
+            catch (ObjectDisposedException) when (_cancellation.IsCancellationRequested)
+            {
+                // Stop may dispose the listener while its next Accept is being scheduled.
+            }
             finally
             {
                 _cancellation.Dispose();

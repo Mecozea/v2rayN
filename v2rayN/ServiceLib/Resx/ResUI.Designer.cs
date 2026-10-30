@@ -32,6 +32,30 @@ namespace ServiceLib.Resx {
         internal ResUI() {
         }
         
+        public static string NowhereSubscriptionReconnect => ResourceManager.GetString("NowhereSubscriptionReconnect", resourceCulture)!;
+
+        public static string menuAddNowhereServer => ResourceManager.GetString("menuAddNowhereServer", resourceCulture)!;
+        public static string NowhereUnsupportedPlatform => ResourceManager.GetString("NowhereUnsupportedPlatform", resourceCulture)!;
+
+        public static string menuUpdateNowhereCore => ResourceManager.GetString("menuUpdateNowhereCore", resourceCulture)!;
+        public static string menuRollbackNowhereCore => ResourceManager.GetString("menuRollbackNowhereCore", resourceCulture)!;
+
+        public static string NowhereExportShareInstead => ResourceManager.GetString("NowhereExportShareInstead", resourceCulture)!;
+
+        public static string CorePreviousSessionRemains => ResourceManager.GetString("CorePreviousSessionRemains", resourceCulture)!;
+
+        public static string NowhereKey => ResourceManager.GetString("NowhereKey", resourceCulture)!;
+
+        public static string NowhereCarrier => ResourceManager.GetString("NowhereCarrier", resourceCulture)!;
+
+        public static string NowhereMorph => ResourceManager.GetString("NowhereMorph", resourceCulture)!;
+
+        public static string NowherePin => ResourceManager.GetString("NowherePin", resourceCulture)!;
+
+        public static string NowhereInvalidSettings => ResourceManager.GetString("NowhereInvalidSettings", resourceCulture)!;
+
+        public static string NowhereExperimental => ResourceManager.GetString("NowhereExperimental", resourceCulture)!;
+
         /// <summary>
         ///   返回此类使用的缓存的 ResourceManager 实例。
         /// </summary>
@@ -5417,5 +5441,7 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("UpgradeAppNotExistTip", resourceCulture);
             }
         }
+        public static string NowhereCoreCurrent => ResourceManager.GetString("NowhereCoreCurrent", resourceCulture);
+        public static string NowhereCoreAvailable => ResourceManager.GetString("NowhereCoreAvailable", resourceCulture);
     }
 }

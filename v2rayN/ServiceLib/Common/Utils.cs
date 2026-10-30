@@ -1125,7 +1125,7 @@ public class Utils
         {
             var basePath = GetBaseDirectory();
             //When this file exists, it is equivalent to having no permission to read and write
-            if (File.Exists(Path.Combine(basePath, "NotStoreConfigHere.txt")))
+            if (File.Exists(GetBundledResourcePath("NotStoreConfigHere.txt")))
             {
                 return false;
             }
@@ -1167,6 +1167,17 @@ public class Utils
     public static string GetBaseDirectory(string fileName = "")
     {
         return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+    }
+
+    public static string GetBundledResourcePath(string fileName)
+    {
+        var baseDirectory = new DirectoryInfo(GetBaseDirectory());
+        if (OperatingSystem.IsMacOS() && baseDirectory.Name == "MacOS"
+            && baseDirectory.Parent?.Name == "Contents")
+        {
+            return Path.Combine(baseDirectory.Parent.FullName, "Resources", fileName);
+        }
+        return GetBaseDirectory(fileName);
     }
 
     public static string GetExePath()

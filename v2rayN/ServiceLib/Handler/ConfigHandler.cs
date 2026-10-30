@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 
 namespace ServiceLib.Handler;
 
@@ -6,6 +6,10 @@ public static class ConfigHandler
 {
     private static readonly string _configRes = Global.ConfigFileName;
     private static readonly string _tag = "ConfigHandler";
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Config, byte> _subscriptionReconnectRequired = new();
+
+    public static bool ConsumeSubscriptionReconnectRequired(Config config)
+        => _subscriptionReconnectRequired.TryRemove(config, out _);
 
     #region ConfigHandler
 
@@ -242,6 +246,10 @@ public static class ConfigHandler
     /// <returns>Result of the operation (0 if successful, -1 if failed)</returns>
     public static async Task<int> AddServer(Config config, ProfileItem profileItem)
     {
+        if (profileItem.ConfigType == EConfigType.Nowhere && !NowhereFmt.IsValid(profileItem))
+        {
+            return -1;
+        }
         var item = await AppManager.Instance.GetProfileItem(profileItem.IndexId);
         if (item is null)
         {
@@ -293,6 +301,7 @@ public static class ConfigHandler
             EConfigType.Anytls => await AddAnytlsServer(config, item),
             EConfigType.Naive => await AddNaiveServer(config, item),
             EConfigType.MASQUE => await AddMasqueServer(config, item),
+            EConfigType.Nowhere => await AddNowhereServer(config, item),
             _ => -1,
         };
         return ret;
@@ -993,6 +1002,21 @@ public static class ConfigHandler
         return 0;
     }
 
+    /// <summary>Validate a Nowhere profile before storing any connection settings.</summary>
+    public static async Task<int> AddNowhereServer(Config config, ProfileItem profileItem, bool toFile = true)
+    {
+        if (!NowhereFmt.IsValid(profileItem))
+        {
+            return -1;
+        }
+        profileItem.ConfigType = EConfigType.Nowhere;
+        profileItem.CoreType = ECoreType.Nowhere;
+        profileItem.Network = string.Empty;
+        profileItem.StreamSecurity = Global.StreamSecurity;
+        profileItem.AllowInsecure = Global.StringFalse;
+        return await AddServerCommon(config, profileItem, toFile);
+    }
+
     public static async Task<int> AddMasqueServer(Config config, ProfileItem profileItem, bool toFile = true)
     {
         profileItem.ConfigType = EConfigType.MASQUE;
@@ -1286,6 +1310,18 @@ public static class ConfigHandler
             return false;
         }
 
+        if (o.ConfigType == EConfigType.Nowhere || n.ConfigType == EConfigType.Nowhere)
+        {
+            return o.ConfigType == n.ConfigType
+                && string.Equals(o.Address, n.Address, StringComparison.OrdinalIgnoreCase)
+                && o.Port == n.Port && AreEqual(o.Password, n.Password)
+                && string.Equals(o.Sni ?? string.Empty, n.Sni ?? string.Empty, StringComparison.OrdinalIgnoreCase)
+                && AreEqual(o.GetProtocolExtra().NowhereCarrier ?? "tcp", n.GetProtocolExtra().NowhereCarrier ?? "tcp")
+                && (o.GetProtocolExtra().NowhereMorph ?? true) == (n.GetProtocolExtra().NowhereMorph ?? true)
+                && AreEqual(o.GetProtocolExtra().NowherePin, n.GetProtocolExtra().NowherePin)
+                && (!remarks || o.Remarks == n.Remarks);
+        }
+
         var oProtocolExtra = o.GetProtocolExtra();
         var nProtocolExtra = n.GetProtocolExtra();
         var oTransport = o.GetTransportExtra();
@@ -1350,6 +1386,15 @@ public static class ConfigHandler
         {
             return matchedItem;
         }
+
+        // Without an agreed stable node ID, only full connection semantics identify Nowhere.
+        // This also prevents mixed subscriptions from matching another protocol by name/address.
+        matchedItem = source.FirstOrDefault(t => CompareProfileItem(t, target, false));
+        if (matchedItem != null || target.ConfigType == EConfigType.Nowhere)
+        {
+            return matchedItem;
+        }
+        source = source.Where(t => t.ConfigType != EConfigType.Nowhere);
 
         if (target.Remarks.IsNotEmpty())
         {
@@ -1709,6 +1754,7 @@ public static class ConfigHandler
                 EConfigType.Anytls => await AddAnytlsServer(config, profileItem, false),
                 EConfigType.Naive => await AddNaiveServer(config, profileItem, false),
                 EConfigType.MASQUE => await AddMasqueServer(config, profileItem, false),
+                EConfigType.Nowhere => await AddNowhereServer(config, profileItem, false),
                 _ => -1,
             };
 
@@ -2031,6 +2077,7 @@ public static class ConfigHandler
                     EConfigType.WireGuard => await AddWireguardServer(config, profileItem, false),
                     EConfigType.Anytls => await AddAnytlsServer(config, profileItem, false),
                     EConfigType.Naive => await AddNaiveServer(config, profileItem, false),
+                    EConfigType.Nowhere => await AddNowhereServer(config, profileItem, false),
                     EConfigType.PolicyGroup or EConfigType.ProxyChain => await AddServerCommon(config, profileItem, false),
                     EConfigType.Outbound => await AddCustomOutboundServer(config, profileItem, true, false),
                     _ => -1,
@@ -2073,6 +2120,12 @@ public static class ConfigHandler
         {
             lstOriSub = await AppManager.Instance.ProfileItems(subid);
             activeProfile = lstOriSub?.FirstOrDefault(t => t.IndexId == config.IndexId);
+            var decoded = Utils.IsBase64String(strData) ? Utils.Base64Decode(strData) : strData;
+            if (decoded.Contains("nowhere://", StringComparison.OrdinalIgnoreCase)
+                || lstOriSub?.Any(t => t.ConfigType == EConfigType.Nowhere) == true)
+            {
+                return await UpdateNowhereLinkSubscription(config, decoded, subid, lstOriSub ?? []);
+            }
             await RemoveServersViaSubid(config, subid, true);
         }
 
@@ -2159,6 +2212,60 @@ public static class ConfigHandler
         }
 
         return counter;
+    }
+
+    /// <summary>
+    /// A Nowhere/mixed link subscription is fully parsed and validated before replacing its rows.
+    /// Unknown or malformed entries fail the refresh, retaining the complete previous snapshot.
+    /// </summary>
+    private static async Task<int> UpdateNowhereLinkSubscription(Config config, string data, string subid, List<ProfileItem> previous)
+    {
+        var staged = new List<ProfileItem>();
+        var filter = (await AppManager.Instance.GetSubItem(subid))?.Filter;
+        foreach (var line in data.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var profile = FmtHandler.ResolveConfig(line, out _);
+            if (profile == null || !profile.IsValid())
+            {
+                return -1;
+            }
+            if (filter.IsNotEmpty() && !Utils.IsRegexMatch(profile.Remarks, filter))
+            {
+                continue;
+            }
+            if (staged.Any(t => CompareProfileItem(t, profile, false)))
+            {
+                continue;
+            }
+            profile.Subid = subid;
+            profile.IsSub = true;
+            var old = previous.FirstOrDefault(t => t.IsSub && CompareProfileItem(t, profile, false));
+            if (old != null)
+            {
+                profile.IndexId = old.IndexId;
+                profile.CoreType = old.CoreType;
+                profile.DisplayLog = old.DisplayLog;
+                profile.PreSocksPort = old.PreSocksPort;
+            }
+            await AddServerCommon(config, profile, false);
+            staged.Add(profile);
+        }
+        if (staged.Count == 0)
+        {
+            return -1;
+        }
+        await SQLiteHelper.Instance.ReplaceSubscriptionProfilesAsync(subid, staged);
+        if (previous.Any(t => t.IsSub && t.IndexId == config.IndexId)
+            && !staged.Any(t => t.IndexId == config.IndexId))
+        {
+            // No stable producer ID exists: key/address/pin rotations create a new identity.
+            // Do not silently point the active selection at a different runtime configuration.
+            config.IndexId = string.Empty;
+            _subscriptionReconnectRequired[config] = 0;
+            NoticeManager.Instance.Enqueue(ResUI.NowhereSubscriptionReconnect);
+        }
+        await SaveConfig(config);
+        return staged.Count;
     }
 
     #endregion Batch add servers

@@ -76,6 +76,11 @@ public class ProfileItem
             return false;
         }
 
+        if (ConfigType == EConfigType.Nowhere)
+        {
+            return NowhereFmt.IsValid(this);
+        }
+
         switch (ConfigType)
         {
             case EConfigType.VMess:

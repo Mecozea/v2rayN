@@ -1,4 +1,4 @@
-using ServiceLib;
+﻿using ServiceLib;
 using ServiceLib.Common;
 using ServiceLib.Enums;
 using ServiceLib.Handler;
@@ -65,15 +65,25 @@ public sealed partial class V2rayRuntime
             return OperationView.Fail("subscription_not_found", ApiMessageKeys.SubscriptionNotFound, new { imported = 0 });
         }
 
-        var count = await _mutations.RunAsync(async () =>
+        int count;
+        try
         {
-            var imported = await ConfigHandler.AddBatchServers(Config, request.Content, groupId, request.IsSubscription);
-            if (imported > 0)
+            count = await _mutations.RunAsync(async () =>
             {
-                await EnsureConfigSaveSucceededAsync(() => ConfigHandler.SaveConfig(Config));
-            }
-            return imported;
-        });
+                var imported = await ConfigHandler.AddBatchServers(Config, request.Content, groupId, request.IsSubscription);
+                if (imported > 0)
+                {
+                    await EnsureConfigSaveSucceededAsync(() => ConfigHandler.SaveConfig(Config));
+                }
+                return imported;
+            });
+        }
+        finally
+        {
+            // A config-file save can fail after the DB replacement committed.
+            // Reconcile removed active profiles even when the import reports that failure.
+            await HandleSubscriptionRuntimeChangeAsync(CancellationToken.None);
+        }
         if (count <= 0)
         {
             return OperationView.Fail("profile_import_empty", ApiMessageKeys.ProfileInvalid, new { imported = Math.Max(count, 0) });

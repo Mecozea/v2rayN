@@ -24,9 +24,9 @@ public sealed class WebInstanceLock : IDisposable
         Directory.CreateDirectory(directory);
 
         FileStream stream;
-        if (OperatingSystem.IsLinux())
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
-            var descriptor = Open(fullPath, OpenReadWrite | OpenCreate | OpenCloseOnExec, UserReadWriteMode);
+            var descriptor = Open(fullPath, OpenReadWrite | CreateFlag | CloseOnExecFlag, UserReadWriteMode);
             if (descriptor < 0)
             {
                 throw new IOException("Unable to open the v2rayN.WebAPI instance lock.", new Win32Exception(Marshal.GetLastPInvokeError()));
@@ -55,7 +55,7 @@ public sealed class WebInstanceLock : IDisposable
             }
         }
 
-        var acquired = OperatingSystem.IsLinux()
+        var acquired = (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             ? TryFlock(stream, LockExclusive | LockNonBlocking)
             : OperatingSystem.IsWindows() ? TryWindowsLock(stream) : true;
         if (!acquired)
@@ -65,7 +65,7 @@ public sealed class WebInstanceLock : IDisposable
             return false;
         }
 
-        if (OperatingSystem.IsLinux())
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
             File.SetUnixFileMode(fullPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
@@ -88,9 +88,9 @@ public sealed class WebInstanceLock : IDisposable
         try
         {
             string ownerText;
-            if (OperatingSystem.IsLinux())
+            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             {
-                var descriptor = Open(Path.GetFullPath(path), OpenReadOnly | OpenCloseOnExec, 0);
+                var descriptor = Open(Path.GetFullPath(path), OpenReadOnly | CloseOnExecFlag, 0);
                 if (descriptor < 0)
                 {
                     return null;
@@ -143,7 +143,7 @@ public sealed class WebInstanceLock : IDisposable
         }
 
         _disposed = true;
-        if (OperatingSystem.IsLinux())
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
             var descriptor = _stream.SafeFileHandle.DangerousGetHandle().ToInt32();
             _ = Flock(descriptor, LockUnlock);
@@ -161,8 +161,9 @@ public sealed class WebInstanceLock : IDisposable
     private const int LockUnlock = 8;
     private const int OpenReadOnly = 0;
     private const int OpenReadWrite = 2;
-    private const int OpenCreate = 64;
-    private const int OpenCloseOnExec = 524288;
+    // Darwin and Linux use different open(2) flag values.
+    private static int CreateFlag => OperatingSystem.IsMacOS() ? 0x0200 : 64;
+    private static int CloseOnExecFlag => OperatingSystem.IsMacOS() ? 0x1000000 : 524288;
     private const uint UserReadWriteMode = 0x180;
     private const long WindowsLockOffset = 1024 * 1024;
     private const long WindowsLockLength = 1;

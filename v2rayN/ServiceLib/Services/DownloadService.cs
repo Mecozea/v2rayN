@@ -347,7 +347,7 @@ public class DownloadService
     /// <summary>
     /// Creates local SOCKS proxy when proxy switch is enabled.
     /// </summary>
-    private async Task<WebProxy?> GetWebProxy(bool blProxy, CancellationToken cancellationToken = default)
+    public async Task<WebProxy?> GetWebProxy(bool blProxy, CancellationToken cancellationToken = default)
     {
         if (!blProxy)
         {
