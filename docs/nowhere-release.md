@@ -13,7 +13,7 @@
 
 文档等不影响构建的修改不触发自动构建；标签推送不受路径过滤限制。普通分支 / PR 的新提交会取消相同分支 / PR 的旧运行；标签构建不取消。两个构建任务均设置 45 分钟上限，SDK 下载和 NuGet 依赖由 Actions 管理并缓存。
 
-构建版本来源依次为：推送的标签版本、手动填写版本、Directory.Build.props。Windows/macOS 使用同一个值发布 GUI 与更新器。当前源码默认版本为 7.25.7。
+构建版本来源依次为：推送的标签版本、手动填写版本、Directory.Build.props。Windows/macOS 使用同一个值发布 GUI 与更新器。当前源码默认版本为 7.25.8。
 
 ## 产物与数量
 
@@ -48,8 +48,8 @@
 公开预发布：确认修改已提交、目标 tag 尚未使用且发布密钥已配置，然后执行：
 
 ```sh
-git tag nowhere-v7.25.7
-git push origin nowhere-v7.25.7
+git tag nowhere-v7.25.8
+git push origin nowhere-v7.25.8
 ```
 
 标签应指向需要发布的提交。发布目标使用 `github.repository`，即本 fork `Mecozea/v2rayN`。未调用上游发布或 WinGet；客户端 GUI 更新源同样指向本 fork。流水线创建 prerelease，客户端需勾选“检查 Pre-Release”才能发现预发布；完成平台验收后再在 GitHub 将其转为稳定版。
@@ -70,17 +70,17 @@ shasum -a 256 -c SHA256SUMS-macos-arm64.txt
 Windows x64 需 .NET 10 SDK：
 
 ```powershell
-./scripts/Publish-NowhereWindows.ps1 -OutputDirectory ./dist/windows-x64 -Version 7.25.7
+./scripts/Publish-NowhereWindows.ps1 -OutputDirectory ./dist/windows-x64 -Version 7.25.8
 ```
 
 Apple Silicon Mac 需 .NET 10 SDK、Python 3.13+、Xcode Command Line Tools：
 
 ```sh
-bash scripts/package-nowhere-macos.sh 7.25.7
+bash scripts/package-nowhere-macos.sh 7.25.8
 ```
 
 输出目录应为空 / 不存在。可用 `NOWHERE_MACOS_CACHE=/absolute/cache` 复用缓存，仍逐项核对固定 SHA-256。macOS 程序与原生库放在 Contents/MacOS，内核 / 规则 / 标记放在 Contents/Resources；完整 App ZIP 用于更新器整体替换。官方 Nowhere 可执行文件保持原始字节与签名。
 
-2026-10-30 核对远端：fork 旧提交 `d7ff14c7` 最近 6 次普通构建 / 测试均成功；未证明原发布链路、GPG secret 或本次精简后的工作流已在 Actions 跑通。本轮只读查询、修改本地工作流并运行 actionlint 和 6 种版本解析检查，未推送、触发 Actions 或发布 Release。本地 7.25.7 macOS 包已通过原生测试、签名和镜像校验，详见 `nowhere-macos-validation-2026-10-30.md`；GUI / 公网 / TUN 验收仍按独立清单执行。
+2026-10-30 核对远端：fork 旧提交 `d7ff14c7` 最近 6 次普通构建 / 测试均成功；未证明原发布链路、GPG secret 或本次精简后的工作流已在 Actions 跑通。本轮只读查询、修改本地工作流并运行 actionlint 和 6 种版本解析检查，未推送、触发 Actions 或发布 Release。本地 7.25.8 macOS 包已通过原生测试、签名和镜像校验，详见 `nowhere-macos-validation-2026-10-30.md`；GUI / 公网 / TUN 验收仍按独立清单执行。
 
 旧全平台发布还存在 master 分支硬编码、dispatch 不等待结果、旧式 Mac ZIP 与完整 bundle 更新不兼容等问题；RISC-V runner 的访问也不能假定从上游继承。精简后不再执行这些路径，不要求配置 RISC-V / LoongArch 自托管环境。
