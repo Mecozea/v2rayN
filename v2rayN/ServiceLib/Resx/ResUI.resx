@@ -1910,7 +1910,6 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="NowhereMorph" xml:space="preserve"><value>Enable Morph</value></data>
   <data name="NowherePin" xml:space="preserve"><value>Certificate SHA-256 pin (optional)</value></data>
   <data name="NowhereInvalidSettings" xml:space="preserve"><value>Invalid Nowhere settings. Check the address, port, key, carrier, SNI and certificate pin.</value></data>
-  <data name="NowhereExperimental" xml:space="preserve"><value>Experimental integration. Network and platform acceptance tests are not complete.</value></data>
   <data name="NowhereSubscriptionReconnect" xml:space="preserve"><value>The active subscription node changed or was removed. Reconnecting is required; the previous session will be stopped.</value></data>
   <data name="menuAddNowhereServer" xml:space="preserve"><value>Add Nowhere server (experimental)</value></data>
   <data name="NowhereUnsupportedPlatform" xml:space="preserve"><value>Nowhere supports Windows x64 and macOS Apple Silicon (arm64).</value></data>

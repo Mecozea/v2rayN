@@ -54,7 +54,6 @@ namespace ServiceLib.Resx {
 
         public static string NowhereInvalidSettings => ResourceManager.GetString("NowhereInvalidSettings", resourceCulture)!;
 
-        public static string NowhereExperimental => ResourceManager.GetString("NowhereExperimental", resourceCulture)!;
 
         /// <summary>
         ///   返回此类使用的缓存的 ResourceManager 实例。

@@ -1902,7 +1902,6 @@
   <data name="NowhereMorph" xml:space="preserve"><value>启用 Morph</value></data>
   <data name="NowherePin" xml:space="preserve"><value>证书 SHA-256 指纹（可选）</value></data>
   <data name="NowhereInvalidSettings" xml:space="preserve"><value>Nowhere 参数无效，请检查地址、端口、密钥、承载、SNI 和证书指纹。</value></data>
-  <data name="NowhereExperimental" xml:space="preserve"><value>实验性适配，网络与平台验收尚未完成。</value></data>
   <data name="NowhereSubscriptionReconnect" xml:space="preserve"><value>当前订阅节点的参数已变化或节点已删除，需要重新连接；将停止旧会话。</value></data>
   <data name="menuAddNowhereServer" xml:space="preserve"><value>添加 Nowhere 节点（实验性）</value></data>
   <data name="NowhereUnsupportedPlatform" xml:space="preserve"><value>Nowhere 支持 Windows x64 和 macOS Apple Silicon（arm64）。</value></data>
