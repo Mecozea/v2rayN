@@ -231,9 +231,11 @@ public class NowhereRuntimeTests
             try { await NowhereRuntime.WaitForSocksAsync(process, port, CancellationToken.None); }
             finally { await process.StopAsync(); }
             await process.HasExited.Should().BeTrue();
-            var listener = new TcpListener(IPAddress.Loopback, port);
-            try { listener.Start(); }
-            finally { listener.Stop(); }
+            // Rebinding can fail on Windows while closed TCP connections remain in
+            // TIME_WAIT. Inspect listening sockets to detect an actual leaked listener.
+            var stillListening = IPGlobalProperties.GetIPGlobalProperties()
+                .GetActiveTcpListeners().Any(endpoint => endpoint.Port == port);
+            await stillListening.Should().BeFalse();
         }
     }
 
