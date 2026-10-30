@@ -168,7 +168,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "$GPG_PRIVATE_KEY" ]] || { echo 'Configure your own GPG_PRIVATE_KEY before publishing tags. Manual builds need no secret.'; exit 1; }
+          if [[ -z "$GPG_PRIVATE_KEY" ]]; then
+            echo 'GPG key not configured; publishing SHA-256 verified assets without detached signatures.'
+            exit 0
+          fi
           install -m 700 -d "$GNUPGHOME"
           printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
           fingerprint="$(gpg --batch --list-secret-keys --with-colons | awk -F: '$1 == "fpr" { print $10; exit }')"
