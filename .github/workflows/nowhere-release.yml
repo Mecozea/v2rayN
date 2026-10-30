@@ -132,7 +132,11 @@ jobs:
                   if result.tag.endswith('UnitTestResult') and result.get('outcome') == 'Failed':
                       method = result.get('testName', '').split('(')[0]
                       if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.]{0,250}', method):
-                          print(f"::error::Failed test method: {method}. See authenticated job logs for details.")
+                          details = ''.join(result.itertext())
+                          categories = [name for name in ('SocketException', 'OperationCanceledException', 'TimeoutException', 'InvalidOperationException', 'Win32Exception', 'AssertionException') if name in details]
+                          lines = re.findall(r'NowhereRuntimeTests\.cs:line ([0-9]{1,6})', details)
+                          locations = ', '.join('NowhereRuntimeTests.cs:' + line for line in lines)
+                          print(f"::error::Failed test method: {method}; exception categories: {', '.join(categories)}; source lines: {locations}. See authenticated job logs for details.")
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v7
