@@ -119,6 +119,20 @@ jobs:
       - name: Test shared WebAPI regression
         shell: bash
         run: dotnet test --project v2rayN/v2rayN.WebAPI/Tests -c Release --results-directory dist/test-results -- --report-trx
+      - name: Report failed test method names
+        if: failure()
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+          for path in Path('dist/test-results').rglob('*.trx'):
+              root = ET.parse(path).getroot()
+              for result in root.iter():
+                  if result.tag.endswith('UnitTestResult') and result.get('outcome') == 'Failed':
+                      method = result.get('testName', '').split('(')[0]
+                      if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.]{0,250}', method):
+                          print(f"::error::Failed test method: {method}. See authenticated job logs for details.")
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v7
